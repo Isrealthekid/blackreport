@@ -228,6 +228,7 @@ export interface Mission {
   id: string;
   organisation_id: string;
   camp_id: string;
+  created_by?: string;
   mission_number: string;
   mission_date: string;
   status: MissionStatus;

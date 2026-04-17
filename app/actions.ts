@@ -743,6 +743,11 @@ export async function updateMissionAction(formData: FormData) {
   await api(`/missions/${id}`, { method: "PATCH", body });
   revalidatePath(`/missions/${id}`);
   revalidatePath("/missions");
+
+  const status = String(formData.get("status") ?? "");
+  if (status === "approved") redirect(`/missions/${id}?approved=1`);
+  if (status === "rejected") redirect(`/missions/${id}?rejected=1`);
+  if (status === "submitted") redirect(`/missions/${id}`);
 }
 
 export async function deleteMissionAction(formData: FormData) {

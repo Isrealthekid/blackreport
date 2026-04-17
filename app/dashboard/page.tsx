@@ -20,17 +20,28 @@ export default async function DashboardPage() {
   const isCamper = myCamps.length > 0;
 
   // Fetch missions for camper's camps
-  let missionList: Mission[] = [];
+  let allCampMissions: Mission[] = [];
   if (isCamper) {
     const results = await Promise.all(
       myCamps.map((c) => apiMaybe<Mission[]>(`/missions?camp_id=${c.id}`)),
     );
-    missionList = results.flatMap((r) => r ?? []);
+    allCampMissions = results.flatMap((r) => r ?? []);
   }
 
-  const draftMissions = missionList.filter((m) => m.status === "draft");
-  const submittedMissions = missionList.filter((m) => m.status === "submitted");
-  const approvedMissions = missionList.filter((m) => m.status === "approved");
+  const isSupervisor =
+    user.is_admin ||
+    myCamps.some((c) => c.members?.some((m) => m.user_id === user.id && m.role === "supervisor"));
+
+  // Campers see only their own missions; supervisors/admins see all.
+  const myMissions = isSupervisor
+    ? allCampMissions
+    : allCampMissions.filter((m) => m.created_by === user.id);
+
+  const draftMissions = myMissions.filter((m) => m.status === "draft");
+  const approvedMissions = myMissions.filter((m) => m.status === "approved");
+
+  // Supervisors see ALL submitted missions (including others') for review.
+  const submittedMissions = allCampMissions.filter((m) => m.status === "submitted");
 
   // ── Camper Dashboard ──
   if (isCamper) {
@@ -57,7 +68,7 @@ export default async function DashboardPage() {
             href="/missions"
             className="border border-neutral-800 hover:border-neutral-600 rounded-lg p-6 text-center transition"
           >
-            <div className="text-3xl font-bold">{missionList.length}</div>
+            <div className="text-3xl font-bold">{myMissions.length}</div>
             <div className="font-semibold text-neutral-200 mt-2">My Missions</div>
             <p className="text-xs text-neutral-500 mt-1">View all missions across your camps</p>
           </Link>
@@ -66,10 +77,46 @@ export default async function DashboardPage() {
         {/* ── Stats ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
           <Card label="Draft" value={draftMissions.length} tone={draftMissions.length ? "text-orange-400" : ""} />
-          <Card label="Submitted" value={submittedMissions.length} tone={submittedMissions.length ? "text-blue-400" : ""} />
+          <Card label="Pending" value={submittedMissions.length} tone={submittedMissions.length ? "text-yellow-400" : ""} />
           <Card label="Approved" value={approvedMissions.length} tone="text-green-400" />
           <Card label="Camps" value={myCamps.length} href="/camps" />
         </div>
+
+        {/* ── Pending Approval (supervisor / admin) ── */}
+        {isSupervisor && submittedMissions.length > 0 && (
+          <div className="mt-6 border border-yellow-800 bg-yellow-950/20 rounded-lg p-4">
+            <div className="font-semibold text-yellow-200">
+              Pending Your Approval ({submittedMissions.length})
+            </div>
+            <p className="text-xs text-yellow-300/60 mt-1">
+              These missions need your review.
+            </p>
+            <div className="mt-3 space-y-2">
+              {submittedMissions.map((m) => {
+                const camp = myCamps.find((c) => c.id === m.camp_id);
+                return (
+                  <Link
+                    key={m.id}
+                    href={`/missions/${m.id}`}
+                    className="block border border-neutral-800 hover:border-yellow-700 rounded p-3 transition"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-mono font-medium">{m.mission_number}</span>
+                        <span className="text-neutral-500 text-sm ml-2">
+                          {camp?.site_name} · {m.mission_date}
+                        </span>
+                      </div>
+                      <span className="text-xs text-yellow-300 px-2 py-1 bg-yellow-900/40 rounded">
+                        Review →
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Draft missions needing SAC forms ── */}
         {draftMissions.length > 0 && (

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { saveSAC16Action } from "@/app/actions";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { FlightHour, SAC16 } from "@/lib/types";
 
 export default function SAC16Form({
@@ -11,12 +11,13 @@ export default function SAC16Form({
   missionId: string;
   existing: SAC16 | null;
 }) {
+  const router = useRouter();
   const [description, setDescription] = useState(existing?.mission_description ?? "");
   const [hours, setHours] = useState<FlightHour[]>(
     existing?.flight_hours ?? [{ hour: 1, mission_order: "", report: "" }],
   );
-  const formRef = useRef<HTMLFormElement>(null);
-  const payloadRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const updateHour = (i: number, patch: Partial<FlightHour>) =>
     setHours((h) => h.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
@@ -27,30 +28,41 @@ export default function SAC16Form({
   const removeHour = (i: number) =>
     setHours((h) => h.filter((_, idx) => idx !== i).map((x, idx) => ({ ...x, hour: idx + 1 })));
 
-  const handleSubmit = () => {
-    if (payloadRef.current) {
-      payloadRef.current.value = JSON.stringify({
-        mission_description: description,
-        flight_hours: hours,
+  const handleSubmit = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/sac", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          missionId,
+          form: "sac16",
+          payload: { mission_description: description, flight_hours: hours },
+        }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Error ${res.status}`);
+      }
+      router.push(`/missions/${missionId}`);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
     }
-    formRef.current?.requestSubmit();
   };
 
   return (
-    <form ref={formRef} action={saveSAC16Action} className="mt-6 space-y-6">
-      <input type="hidden" name="mission_id" value={missionId} />
-      <input type="hidden" name="payload" ref={payloadRef} defaultValue="{}" />
+    <div className="mt-6 space-y-6">
+      {error && (
+        <div className="p-3 border border-red-800 bg-red-950/30 rounded text-sm text-red-300">{error}</div>
+      )}
 
       <div>
         <label className="text-sm text-neutral-400">Mission Description</label>
-        <textarea
-          rows={4}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2"
-          placeholder="Describe the drone mission objectives and scope…"
-        />
+        <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2" placeholder="Describe the drone mission objectives and scope…" />
       </div>
 
       <div>
@@ -74,9 +86,9 @@ export default function SAC16Form({
         )}
       </div>
 
-      <button type="button" onClick={handleSubmit} className="px-4 py-2 bg-white text-black font-medium rounded">
-        {existing ? "Update SAC 16" : "Save SAC 16"}
+      <button type="button" onClick={handleSubmit} disabled={saving} className="px-4 py-2 bg-white text-black font-medium rounded disabled:opacity-50">
+        {saving ? "Saving…" : existing ? "Update SAC 16" : "Save SAC 16"}
       </button>
-    </form>
+    </div>
   );
 }

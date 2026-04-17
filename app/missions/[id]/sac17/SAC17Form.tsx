@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { saveSAC17Action } from "@/app/actions";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+function toRFC3339(v: string): string | undefined {
+  if (!v) return undefined;
+  if (v.includes("Z") || v.includes("+")) return v;
+  return `${v}:00Z`.replace("T", "T");
+}
 
 export default function SAC17Form({
   missionId,
@@ -10,10 +16,8 @@ export default function SAC17Form({
   missionId: string;
   existing: Record<string, unknown> | null;
 }) {
+  const router = useRouter();
   const e = existing ?? {};
-  const formRef = useRef<HTMLFormElement>(null);
-  const payloadRef = useRef<HTMLInputElement>(null);
-
   const otherPersons = (e.other_persons as Record<string, string> | undefined) ?? {};
   const observersArr = (e.observers as { name: string; contact: string }[] | undefined) ?? [];
 
@@ -28,10 +32,10 @@ export default function SAC17Form({
     other_military: otherPersons.military ?? "",
     other_civilian: otherPersons.civilian ?? "",
     other_agency: otherPersons.other_agency ?? "",
-    takeoff_latitude: (e.takeoff_latitude as number) ?? "",
-    takeoff_longitude: (e.takeoff_longitude as number) ?? "",
-    landing_latitude: (e.landing_latitude as number) ?? "",
-    landing_longitude: (e.landing_longitude as number) ?? "",
+    takeoff_latitude: e.takeoff_latitude != null ? String(e.takeoff_latitude) : "",
+    takeoff_longitude: e.takeoff_longitude != null ? String(e.takeoff_longitude) : "",
+    landing_latitude: e.landing_latitude != null ? String(e.landing_latitude) : "",
+    landing_longitude: e.landing_longitude != null ? String(e.landing_longitude) : "",
     date_from: (e.date_from as string) ?? "",
     date_to: (e.date_to as string) ?? "",
     times_notes: (e.times_notes as string) ?? "",
@@ -51,62 +55,86 @@ export default function SAC17Form({
     (e.pre_flight_checklist as Record<string, boolean>) ?? {},
   );
   const [checklistKey, setChecklistKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const set = (k: string, v: unknown) => setData((d) => ({ ...d, [k]: v }));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setSaving(true);
+    setError(null);
+
     const observers = data.observers_text
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean)
+      .split("\n").map((l) => l.trim()).filter(Boolean)
       .map((l) => {
         const [name, contact] = l.split("|");
         return { name: name?.trim() ?? "", contact: contact?.trim() ?? "" };
       });
 
     const payload: Record<string, unknown> = {
-      mission_initiator_name: data.mission_initiator_name,
-      mission_initiator_contact: data.mission_initiator_contact,
-      unit_details: data.unit_details,
-      remote_pilot_name: data.remote_pilot_name,
-      remote_pilot_contact: data.remote_pilot_contact,
-      remote_pilot_flyer_id: data.remote_pilot_flyer_id,
-      pre_flight_checklist: checklist,
-      observers,
+      mission_initiator_name: data.mission_initiator_name || undefined,
+      mission_initiator_contact: data.mission_initiator_contact || undefined,
+      unit_details: data.unit_details || undefined,
+      remote_pilot_name: data.remote_pilot_name || undefined,
+      remote_pilot_contact: data.remote_pilot_contact || undefined,
+      remote_pilot_flyer_id: data.remote_pilot_flyer_id || undefined,
+      pre_flight_checklist: Object.keys(checklist).length > 0 ? checklist : undefined,
+      observers: observers.length > 0 ? observers : undefined,
       other_persons: {
-        military: data.other_military,
-        civilian: data.other_civilian,
-        other_agency: data.other_agency,
+        military: data.other_military || "",
+        civilian: data.other_civilian || "",
+        other_agency: data.other_agency || "",
       },
-      takeoff_latitude: data.takeoff_latitude ? Number(data.takeoff_latitude) : undefined,
-      takeoff_longitude: data.takeoff_longitude ? Number(data.takeoff_longitude) : undefined,
-      landing_latitude: data.landing_latitude ? Number(data.landing_latitude) : undefined,
-      landing_longitude: data.landing_longitude ? Number(data.landing_longitude) : undefined,
-      date_from: data.date_from || undefined,
-      date_to: data.date_to || undefined,
-      times_notes: data.times_notes,
+      takeoff_latitude: data.takeoff_latitude !== "" ? Number(data.takeoff_latitude) : undefined,
+      takeoff_longitude: data.takeoff_longitude !== "" ? Number(data.takeoff_longitude) : undefined,
+      landing_latitude: data.landing_latitude !== "" ? Number(data.landing_latitude) : undefined,
+      landing_longitude: data.landing_longitude !== "" ? Number(data.landing_longitude) : undefined,
+      date_from: toRFC3339(data.date_from),
+      date_to: toRFC3339(data.date_to),
+      times_notes: data.times_notes || undefined,
       permission_required: data.permission_required,
-      permission_notes: data.permission_notes,
-      mission_type: data.mission_type,
-      flight_count: Number(data.flight_count) || 0,
-      flight_duration: data.flight_duration,
-      flight_id: data.flight_id,
-      uav_model: data.uav_model,
-      uav_serial: data.uav_serial,
-      payload_requirements: data.payload_requirements,
-      detailed_mission_report: data.detailed_mission_report,
+      permission_notes: data.permission_notes || undefined,
+      mission_type: data.mission_type || undefined,
+      flight_count: Number(data.flight_count) || undefined,
+      flight_duration: data.flight_duration || undefined,
+      flight_id: data.flight_id || undefined,
+      uav_model: data.uav_model || undefined,
+      uav_serial: data.uav_serial || undefined,
+      payload_requirements: data.payload_requirements || undefined,
+      detailed_mission_report: data.detailed_mission_report || undefined,
     };
 
-    if (payloadRef.current) payloadRef.current.value = JSON.stringify(payload);
-    formRef.current?.requestSubmit();
+    // Strip undefined keys so the JSON is clean.
+    const clean = Object.fromEntries(
+      Object.entries(payload).filter(([, v]) => v !== undefined),
+    );
+
+    try {
+      const res = await fetch("/api/sac", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ missionId, form: "sac17", payload: clean }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `Error ${res.status}`);
+      }
+      router.push(`/missions/${missionId}`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const input = "mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm";
 
   return (
-    <form ref={formRef} action={saveSAC17Action} className="mt-6 space-y-6">
-      <input type="hidden" name="mission_id" value={missionId} />
-      <input type="hidden" name="payload" ref={payloadRef} defaultValue="{}" />
+    <div className="mt-6 space-y-6">
+      {error && (
+        <div className="p-3 border border-red-800 bg-red-950/30 rounded text-sm text-red-300">{error}</div>
+      )}
 
       <section>
         <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Mission Initiator</h3>
@@ -144,8 +172,7 @@ export default function SAC17Form({
 
       <section>
         <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Observers</h3>
-        <textarea rows={3} value={data.observers_text} onChange={(ev) => set("observers_text", ev.target.value)} placeholder="One per line: Name|Contact" className={input} />
-        <p className="text-xs text-neutral-500 mt-1">Format: Name|Contact (one per line)</p>
+        <textarea rows={3} value={data.observers_text} onChange={(ev) => set("observers_text", ev.target.value)} placeholder="Name|Contact (one per line)" className={input} />
       </section>
 
       <section>
@@ -171,13 +198,11 @@ export default function SAC17Form({
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Permission &amp; Flight Info</h3>
+        <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Permission &amp; Flight</h3>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="flex items-center gap-2 text-xs text-neutral-400">
-              <input type="checkbox" checked={data.permission_required} onChange={(ev) => set("permission_required", ev.target.checked)} />
-              Permission required
-            </label>
+          <div className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={data.permission_required} onChange={(ev) => set("permission_required", ev.target.checked)} />
+            <span className="text-neutral-400">Permission required</span>
           </div>
           <Inp label="Permission Notes" value={data.permission_notes} onChange={(v) => set("permission_notes", v)} className={input} />
           <Inp label="Mission Type" value={data.mission_type} onChange={(v) => set("mission_type", v)} className={input} />
@@ -195,10 +220,10 @@ export default function SAC17Form({
         <textarea rows={8} value={data.detailed_mission_report} onChange={(ev) => set("detailed_mission_report", ev.target.value)} className={input} />
       </section>
 
-      <button type="button" onClick={handleSubmit} className="px-4 py-2 bg-white text-black font-medium rounded">
-        {existing ? "Update SAC 17" : "Save SAC 17"}
+      <button type="button" onClick={handleSubmit} disabled={saving} className="px-4 py-2 bg-white text-black font-medium rounded disabled:opacity-50">
+        {saving ? "Saving…" : existing ? "Update SAC 17" : "Save SAC 17"}
       </button>
-    </form>
+    </div>
   );
 }
 

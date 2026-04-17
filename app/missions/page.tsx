@@ -5,9 +5,16 @@ import { getUserCamps } from "@/lib/scope";
 import { createMissionAction } from "@/app/actions";
 import type { Camp, Mission } from "@/lib/types";
 
+const statusLabels: Record<string, string> = {
+  draft: "Draft",
+  submitted: "Pending Approval",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
 const statusColors: Record<string, string> = {
   draft: "bg-neutral-700 text-neutral-200",
-  submitted: "bg-blue-900 text-blue-200",
+  submitted: "bg-yellow-900 text-yellow-200",
   approved: "bg-green-900 text-green-200",
   rejected: "bg-red-900 text-red-200",
 };
@@ -21,15 +28,65 @@ export default async function MissionsPage({
   const sp = await searchParams;
   const myCamps = await getUserCamps(user);
   const qs = sp.camp_id ? `?camp_id=${sp.camp_id}` : "";
-  const missions = (await apiMaybe<Mission[]>(`/missions${qs}`)) ?? [];
+  const allMissions = (await apiMaybe<Mission[]>(`/missions${qs}`)) ?? [];
   const campMap = new Map(myCamps.map((c) => [c.id, c]));
+
+  // Check if user is a supervisor in any camp (or admin).
+  const isSupervisor =
+    user.is_admin ||
+    myCamps.some((c) => c.members?.some((m) => m.user_id === user.id && m.role === "supervisor"));
+
+  // Campers only see missions they created. Supervisors + admins see all.
+  const missions = isSupervisor
+    ? allMissions
+    : allMissions.filter((m) => m.created_by === user.id);
+
   const sorted = [...missions].sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  // Pending approval queue (supervisors see ALL submitted, not just their own).
+  const pendingApproval = allMissions.filter((m) => m.status === "submitted");
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Missions</h1>
       </div>
+
+      {/* ── Pending Approval queue (supervisor / admin) ── */}
+      {isSupervisor && pendingApproval.length > 0 && (
+        <div className="mt-6 border border-yellow-800 bg-yellow-950/20 rounded-lg p-5">
+          <h2 className="font-semibold text-yellow-200">
+            Pending Approval ({pendingApproval.length})
+          </h2>
+          <p className="text-xs text-yellow-300/60 mt-1">
+            These missions have been submitted and are waiting for your review.
+          </p>
+          <div className="mt-3 space-y-2">
+            {pendingApproval.map((m) => {
+              const camp = campMap.get(m.camp_id);
+              return (
+                <Link
+                  key={m.id}
+                  href={`/missions/${m.id}`}
+                  className="block border border-neutral-800 hover:border-yellow-700 rounded p-3 transition"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-mono font-medium">{m.mission_number}</span>
+                      <span className="text-neutral-500 text-sm ml-2">
+                        {camp?.site_name} · {m.mission_date}
+                      </span>
+                    </div>
+                    <span className="text-xs text-yellow-300 px-2 py-1 bg-yellow-900/40 rounded">
+                      Review →
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Create new mission (always visible) ── */}
       <div className="mt-6 border border-indigo-800 bg-indigo-950/20 rounded-lg p-5">
@@ -124,7 +181,7 @@ export default async function MissionsPage({
                   <td className="px-4 py-2 text-neutral-400">{m.mission_date}</td>
                   <td className="px-4 py-2">
                     <span className={`text-xs px-2 py-0.5 rounded ${statusColors[m.status] ?? "bg-neutral-800"}`}>
-                      {m.status}
+                      {statusLabels[m.status] ?? m.status}
                     </span>
                   </td>
                   <td className="px-4 py-2">
