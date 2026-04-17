@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --fg: #f5f5f5;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100%;
+}
+
+@media print {
+  aside, header { display: none !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  body, .printable { background: white !important; color: black !important; }
+  .printable { box-shadow: none !important; }
+}
