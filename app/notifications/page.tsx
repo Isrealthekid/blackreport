@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import { markNotificationReadAction } from "@/app/actions";
 import type { Notification } from "@/lib/types";
 
 export default async function NotificationsPage() {
   await requireUser();
-  const items = (await apiMaybe<Notification[]>("/notifications")) ?? [];
+  const raw = await apiMaybe<unknown>("/notifications");
+  const items = extractItems<Notification>(raw);
 
   return (
     <div>

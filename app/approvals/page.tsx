@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import { bulkApproveAction } from "@/app/actions";
 import type { Department, Report, ReportTemplate, User } from "@/lib/types";
 
@@ -15,17 +16,17 @@ export default async function ApprovalsPage({
   const sp = await searchParams;
   const sort: SortKey = (sp.sort ?? "submitted") as SortKey;
 
-  const [queue, templates, users, departments] = await Promise.all([
-    apiMaybe<Report[]>("/approvals/queue"),
-    apiMaybe<ReportTemplate[]>("/templates"),
-    apiMaybe<User[]>("/users"),
-    apiMaybe<Department[]>("/departments"),
+  const [queueRaw, templatesRaw, usersRaw, departmentsRaw] = await Promise.all([
+    apiMaybe<unknown>("/approvals/queue"),
+    apiMaybe<unknown>("/templates"),
+    apiMaybe<unknown>("/users"),
+    apiMaybe<unknown>("/departments"),
   ]);
 
-  const list = queue ?? [];
-  const tmap = new Map((templates ?? []).map((t) => [t.id, t]));
-  const umap = new Map((users ?? []).map((u) => [u.id, u]));
-  const dmap = new Map((departments ?? []).map((d) => [d.id, d]));
+  const list = extractItems<Report>(queueRaw);
+  const tmap = new Map(extractItems<ReportTemplate>(templatesRaw).map((t) => [t.id, t]));
+  const umap = new Map(extractItems<User>(usersRaw).map((u) => [u.id, u]));
+  const dmap = new Map(extractItems<Department>(departmentsRaw).map((d) => [d.id, d]));
 
   const sorted = [...list].sort((a, b) => {
     if (sort === "reporter") {

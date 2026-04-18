@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import { updateMissionAction, deleteMissionAction } from "@/app/actions";
+import SubmitMission from "./SubmitMission";
 import type { Camp, Mission } from "@/lib/types";
 
 const statusLabels: Record<string, string> = {
@@ -24,7 +25,7 @@ export default async function MissionDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ approved?: string; rejected?: string }>;
+  searchParams: Promise<{ approved?: string; rejected?: string; submitted?: string }>;
 }) {
   const user = await requireUser();
   const [{ id }, sp] = await Promise.all([params, searchParams]);
@@ -79,6 +80,11 @@ export default async function MissionDetail({
           Mission rejected.
         </div>
       )}
+      {sp.submitted === "1" && (
+        <div className="mb-6 border border-green-800 bg-green-950/30 rounded-lg p-4 text-sm text-green-200">
+          ✓ Mission submitted successfully. It is now pending supervisor approval.
+        </div>
+      )}
 
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -87,11 +93,20 @@ export default async function MissionDetail({
             {camp?.site_name ?? "—"} · {mission.mission_date}
           </p>
         </div>
-        <span
-          className={`text-xs px-2 py-1 rounded ${statusColors[mission.status] ?? "bg-neutral-800"}`}
-        >
-          {statusLabels[mission.status] ?? mission.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/missions/${id}/print`}
+            target="_blank"
+            className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
+          >
+            Download PDF
+          </Link>
+          <span
+            className={`text-xs px-2 py-1 rounded ${statusColors[mission.status] ?? "bg-neutral-800"}`}
+          >
+            {statusLabels[mission.status] ?? mission.status}
+          </span>
+        </div>
       </div>
 
       {/* ── Pending approval banner ── */}
@@ -153,47 +168,36 @@ export default async function MissionDetail({
                 </div>
                 <p className="text-xs text-neutral-500 mt-1">{f.desc}</p>
               </div>
-              {f.done ? (
-                <span className="text-green-400 text-sm font-medium px-3 py-1 bg-green-900/40 rounded">
-                  ✓ Completed
-                </span>
-              ) : (
-                <span className="text-indigo-300 text-sm font-medium px-3 py-1 bg-indigo-900/40 rounded">
-                  Fill form →
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {f.done && (
+                  <Link
+                    href={`/missions/${id}/print`}
+                    target="_blank"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
+                  >
+                    PDF
+                  </Link>
+                )}
+                {f.done ? (
+                  <span className="text-green-400 text-sm font-medium px-3 py-1 bg-green-900/40 rounded">
+                    ✓ Completed
+                  </span>
+                ) : (
+                  <span className="text-indigo-300 text-sm font-medium px-3 py-1 bg-indigo-900/40 rounded">
+                    Fill form →
+                  </span>
+                )}
+              </div>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* ── Submit (only for draft with all forms done) ── */}
+      {/* ── Submit (only for draft) ── */}
       {mission.status === "draft" && (
         <div className="mt-8 border-t border-neutral-800 pt-6">
-          {allDone ? (
-            <form action={updateMissionAction}>
-              <input type="hidden" name="id" value={mission.id} />
-              <input type="hidden" name="status" value="submitted" />
-              <button className="w-full px-4 py-3 bg-white text-black font-semibold rounded hover:bg-neutral-200 text-lg">
-                Submit Mission for Approval
-              </button>
-              <p className="text-xs text-neutral-500 mt-2 text-center">
-                A camp supervisor or admin will review and approve this mission.
-              </p>
-            </form>
-          ) : (
-            <div className="text-center">
-              <button
-                disabled
-                className="w-full px-4 py-3 bg-neutral-800 text-neutral-500 font-semibold rounded cursor-not-allowed text-lg"
-              >
-                Submit Mission for Approval
-              </button>
-              <p className="text-xs text-neutral-500 mt-2">
-                Complete all three SAC forms above before submitting.
-              </p>
-            </div>
-          )}
+          <SubmitMission missionId={mission.id} allFormsComplete={allDone} />
         </div>
       )}
 
