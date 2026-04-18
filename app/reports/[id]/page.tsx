@@ -6,6 +6,7 @@ import { actOnReportAction, recallReportAction } from "@/app/actions";
 import type {
   AuditEntry,
   Department,
+  DepartmentMember,
   Report,
   ReportTemplate,
   TemplateField,
@@ -53,15 +54,27 @@ export default async function ReportDetail({
   const report = await apiMaybe<Report>(`/reports/${id}`);
   if (!report) notFound();
 
-  const [template, audit, users, departments] = await Promise.all([
+  const [template, audit, users, departments, deptMembers] = await Promise.all([
     apiMaybe<ReportTemplate>(`/templates/${report!.template_id}`),
     apiMaybe<AuditEntry[]>(`/reports/${id}/audit`),
     apiMaybe<User[]>("/users"),
     apiMaybe<Department[]>("/departments"),
+    report!.department_id
+      ? apiMaybe<DepartmentMember[]>(`/departments/${report!.department_id}/members`)
+      : Promise.resolve(null),
   ]);
   const schema = template?.schema ?? [];
   const reporter = (users ?? []).find((u) => u.id === report!.reporter_id);
   const dept = (departments ?? []).find((d) => d.id === report!.department_id);
+
+  // The user can approve if they're an admin or hold an approver role
+  // (manager, department_head, reviewer) in the report's department.
+  const APPROVER_ROLES = ["admin", "department_head", "manager", "reviewer"];
+  const isApprover =
+    user.is_admin ||
+    (deptMembers ?? []).some(
+      (m) => m.user_id === user.id && APPROVER_ROLES.includes(m.role),
+    );
 
   const canRecall =
     report!.reporter_id === user.id &&
@@ -70,7 +83,9 @@ export default async function ReportDetail({
   const canEditDraft =
     report!.reporter_id === user.id &&
     (report!.status === "draft" || report!.status === "revision_requested");
-  const canReview = report!.status === "pending" || report!.status === "escalated";
+  const canReview =
+    isApprover &&
+    (report!.status === "pending" || report!.status === "escalated");
 
   return (
     <div className="max-w-3xl">
@@ -166,9 +181,6 @@ export default async function ReportDetail({
             placeholder="Optional reviewer note"
             className="w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2"
           />
-          <p className="text-xs text-neutral-500">
-            If you&apos;re not an approver for this level, the server will return 403.
-          </p>
           <div className="flex gap-2 flex-wrap">
             <button name="decision" value="approve" className="px-4 py-2 bg-green-700 hover:bg-green-600 rounded font-medium">
               Approve
