@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { submitReportAction, updateDraftAction } from "@/app/actions";
+import FileUpload from "@/components/FileUpload";
 import type { ReportTemplate, TemplateField } from "@/lib/types";
 
 export interface UserProfile {
@@ -226,17 +227,13 @@ export default function ReportForm({
             return (
               <div key={f.key}>
                 {label}
-                <input
-                  name={f.key}
-                  placeholder="Filename / URL reference"
-                  required={f.required}
-                  value={String(get(f.key) ?? "")}
-                  onChange={(e) => set(f.key, e.target.value)}
-                  className={common}
+                <FileUpload
+                  reportId={reportId}
+                  fieldKey={f.key}
+                  existingValue={String(get(f.key) ?? "")}
+                  onValueChange={(val) => set(f.key, val)}
                 />
-                <p className="text-xs text-neutral-500 mt-1">
-                  Binary uploads use the <code>/reports/[id]/files</code> endpoint.
-                </p>
+                {help}
               </div>
             );
           case "signature":
