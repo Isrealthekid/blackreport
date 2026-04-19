@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import { actOnReportAction, recallReportAction } from "@/app/actions";
+import BackButton from "@/components/BackButton";
+import FilePreview from "@/components/FilePreview";
 import type {
   AuditEntry,
   Department,
@@ -31,6 +33,9 @@ function renderValue(
   if (raw == null || raw === "") return <span className="text-neutral-600">—</span>;
   if (Array.isArray(raw)) return raw.join(", ");
   if (typeof raw === "boolean") return raw ? "Yes" : "No";
+  if (f.type === "file_upload" && typeof raw === "string") {
+    return <FilePreview value={raw} />;
+  }
   if (f.type === "user_reference") {
     return users.find((u) => u.id === raw)?.full_name ?? String(raw);
   }
@@ -83,12 +88,15 @@ export default async function ReportDetail({
   const canEditDraft =
     report!.reporter_id === user.id &&
     (report!.status === "draft" || report!.status === "revision_requested");
+  const isOwnReport = report!.reporter_id === user.id;
   const canReview =
     isApprover &&
+    !isOwnReport &&
     (report!.status === "pending" || report!.status === "escalated");
 
   return (
     <div className="max-w-3xl">
+      <BackButton fallback="/reports" />
       {justSubmitted && (
         <div className="mb-6 border border-green-800 bg-green-950/30 rounded-lg p-4 text-sm text-green-200">
           ✓ Report submitted successfully. It has entered the approval chain — you can track its progress below.

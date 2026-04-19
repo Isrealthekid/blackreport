@@ -70,14 +70,34 @@ export default async function PrintablePage({
         </div>
       </header>
 
-      {(template?.schema ?? []).map((f) => (
+      {(template?.schema ?? []).map((f) => {
+        const raw = (report!.data ?? {})[f.key];
+        const strVal = String(raw ?? "");
+        const isFileRef = f.type === "file_upload" && strVal.startsWith("file::");
+        const fileId = isFileRef ? strVal.split("::")[1] : null;
+        const fileName = isFileRef ? strVal.split("::").slice(2).join("::") : strVal;
+        const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileName);
+        return (
         <div key={f.key} className="mb-4">
           <div className="text-[10px] uppercase tracking-wider text-neutral-600">{f.label}</div>
           <div className="text-sm mt-1 whitespace-pre-wrap">
-            {renderValue(f, (report!.data ?? {})[f.key], users ?? [])}
+            {isFileRef && isImage && fileId ? (
+              <img
+                src={`/api/file/${fileId}`}
+                alt={fileName}
+                className="max-w-sm max-h-64 rounded border border-neutral-300 object-contain"
+              />
+            ) : isFileRef ? (
+              <a href={`/api/file/${fileId}`} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">
+                📎 {fileName}
+              </a>
+            ) : (
+              renderValue(f, raw, users ?? [])
+            )}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       <hr className="border-neutral-300 my-6" />
       <h2 className="font-semibold text-sm">Approval trail</h2>

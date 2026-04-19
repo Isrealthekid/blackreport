@@ -488,6 +488,38 @@ export async function submitReportAction(formData: FormData) {
     method: "POST",
     body: { department_id, template_id, data },
   });
+
+  // Upload any pending files (new report — files couldn't be uploaded before draft existed).
+  for (const [key, val] of formData.entries()) {
+    if (key.startsWith("__file__") && val instanceof File && val.size > 0) {
+      const fieldKey = key.replace("__file__", "");
+      try {
+        const fileForm = new FormData();
+        fileForm.append("file", val);
+        fileForm.append("field_key", fieldKey);
+        const { apiUpload } = await import("@/lib/api");
+        const uploaded = await apiUpload<{ id: string; filename: string }>(
+          `/reports/${created.id}/files`,
+          fileForm,
+        );
+        // Update the report data with the file reference.
+        data[fieldKey] = `file::${uploaded.id}::${uploaded.filename}`;
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+
+  // Patch data if files were uploaded (to store file references).
+  const hasFiles = Object.values(data).some(
+    (v) => typeof v === "string" && (v as string).startsWith("file::"),
+  );
+  if (hasFiles) {
+    try {
+      await api(`/reports/${created.id}`, { method: "PATCH", body: { data } });
+    } catch {}
+  }
+
   if (action === "submit") {
     try {
       await api(`/reports/${created.id}/submit`, { method: "POST" });

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import { updateMissionAction, deleteMissionAction } from "@/app/actions";
+import BackButton from "@/components/BackButton";
 import SubmitMission from "./SubmitMission";
 import type { Camp, Mission } from "@/lib/types";
 
@@ -70,6 +71,7 @@ export default async function MissionDetail({
 
   return (
     <div className="max-w-3xl">
+      <BackButton fallback="/missions" />
       {sp.approved === "1" && (
         <div className="mb-6 border border-green-800 bg-green-950/30 rounded-lg p-4 text-sm text-green-200">
           ✓ Mission approved successfully.

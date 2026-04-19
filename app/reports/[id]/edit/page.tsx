@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import type { Report, ReportTemplate } from "@/lib/types";
+import BackButton from "@/components/BackButton";
 import ReportForm from "../../new/ReportForm";
 
 export default async function EditReportPage({
@@ -23,6 +24,7 @@ export default async function EditReportPage({
 
   return (
     <div className="max-w-2xl">
+      <BackButton fallback={`/reports/${report.id}`} />
       <h1 className="text-2xl font-bold">
         {report.status === "revision_requested" ? "Revise report" : "Edit draft"}
       </h1>

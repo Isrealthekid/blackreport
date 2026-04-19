@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
+import BackButton from "@/components/BackButton";
 import { apiMaybe } from "@/lib/api";
 import {
   addDeptMemberAction,
@@ -44,6 +45,7 @@ export default async function DepartmentEdit({
 
   return (
     <div className="max-w-3xl">
+      <BackButton fallback="/departments" />
       <h1 className="text-2xl font-bold">{dept!.name}</h1>
       <p className="text-sm text-neutral-400 mt-1">
         Configure department identity, hierarchy and membership.

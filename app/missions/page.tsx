@@ -36,10 +36,13 @@ export default async function MissionsPage({
     user.is_admin ||
     myCamps.some((c) => c.members?.some((m) => m.user_id === user.id && m.role === "supervisor"));
 
-  // Campers only see missions they created. Supervisors + admins see all.
+  // Campers see missions they created (if created_by is available) or all in their camps.
+  // Supervisors + admins see all.
   const missions = isSupervisor
     ? allMissions
-    : allMissions.filter((m) => m.created_by === user.id);
+    : allMissions.filter((m) =>
+        m.created_by ? m.created_by === user.id : true,
+      );
 
   const sorted = [...missions].sort((a, b) => b.created_at.localeCompare(a.created_at));
 

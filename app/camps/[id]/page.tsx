@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import { addCampMemberAction, deleteCampAction, removeCampMemberAction, updateCampAction } from "@/app/actions";
+import BackButton from "@/components/BackButton";
 import type { Camp, User } from "@/lib/types";
 
 export default async function CampDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +17,7 @@ export default async function CampDetail({ params }: { params: Promise<{ id: str
 
   return (
     <div className="max-w-3xl">
+      <BackButton fallback="/camps" />
       <h1 className="text-2xl font-bold">{camp.site_name}</h1>
       <p className="text-sm text-neutral-400 mt-1">
         Code: {camp.site_code}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { api, apiMaybe } from "@/lib/api";
 import { getUserDepartments } from "@/lib/scope";
+import BackButton from "@/components/BackButton";
 import type { Department, ReportTemplate } from "@/lib/types";
 import ReportForm, { type UserProfile } from "./ReportForm";
 import ReportPicker from "./ReportPicker";
@@ -117,6 +118,7 @@ export default async function NewReportPage({
 
   return (
     <div className="max-w-2xl">
+      <BackButton fallback="/reports" />
       <h1 className="text-2xl font-bold">New Report</h1>
       <p className="text-sm text-neutral-400 mt-1">
         <span className="text-neutral-200">{user.full_name}</span>
