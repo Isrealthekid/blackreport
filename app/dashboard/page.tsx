@@ -244,11 +244,11 @@ export default async function DashboardPage() {
     );
     allCampMissions = results.flatMap((r) => r ?? []);
 
-    const myMissions = isSupervisor
+    const myMissions = user.is_admin
       ? allCampMissions
-      : allCampMissions.filter((m) =>
-          m.created_by ? m.created_by === user.id : true,
-        );
+      : isSupervisor
+        ? allCampMissions
+        : allCampMissions.filter((m) => m.created_by === user.id);
 
     const draftMissions = myMissions.filter((m) => m.status === "draft");
     const approvedMissions = myMissions.filter((m) => m.status === "approved");

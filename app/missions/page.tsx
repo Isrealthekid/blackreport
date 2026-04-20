@@ -31,23 +31,40 @@ export default async function MissionsPage({
   const allMissions = (await apiMaybe<Mission[]>(`/missions${qs}`)) ?? [];
   const campMap = new Map(myCamps.map((c) => [c.id, c]));
 
-  // Check if user is a supervisor in any camp (or admin).
+  // Determine user's camp role.
+  const isAdmin = user.is_admin;
+  const myCampIds = new Set(myCamps.map((c) => c.id));
   const isSupervisor =
-    user.is_admin ||
-    myCamps.some((c) => c.members?.some((m) => m.user_id === user.id && m.role === "supervisor"));
+    isAdmin ||
+    myCamps.some((c) =>
+      c.members?.some((m) => m.user_id === user.id && m.role === "supervisor"),
+    );
+  const isCamperOnly = !isAdmin && !isSupervisor;
 
-  // Campers see missions they created (if created_by is available) or all in their camps.
-  // Supervisors + admins see all.
-  const missions = isSupervisor
-    ? allMissions
-    : allMissions.filter((m) =>
-        m.created_by ? m.created_by === user.id : true,
-      );
+  // Scope missions by role:
+  // Admin → all missions (already fetched).
+  // Supervisor → all missions in their camps.
+  // Camper → only missions they created.
+  let missions: Mission[];
+  if (isAdmin) {
+    missions = allMissions;
+  } else if (isSupervisor) {
+    // Supervisor sees all missions in camps they belong to.
+    missions = allMissions.filter((m) => myCampIds.has(m.camp_id));
+  } else {
+    // Camper: only their own. Check created_by first, fall back to filtering
+    // out missions that DON'T match (strict — if field is missing, hide it).
+    missions = allMissions.filter((m) => m.created_by === user.id);
+  }
 
   const sorted = [...missions].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-  // Pending approval queue (supervisors see ALL submitted, not just their own).
-  const pendingApproval = allMissions.filter((m) => m.status === "submitted");
+  // Pending approval queue (supervisors/admins see submitted missions from their camps).
+  const pendingApproval = isAdmin
+    ? allMissions.filter((m) => m.status === "submitted")
+    : isSupervisor
+      ? allMissions.filter((m) => m.status === "submitted" && myCampIds.has(m.camp_id))
+      : [];
 
   return (
     <div>
@@ -160,7 +177,7 @@ export default async function MissionsPage({
               <th className="text-left px-4 py-2">Date</th>
               <th className="text-left px-4 py-2">Status</th>
               <th className="text-left px-4 py-2">SAC Forms</th>
-              <th></th>
+              <th className="text-left px-4 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -201,14 +218,29 @@ export default async function MissionsPage({
                     </div>
                   </td>
                   <td className="px-4 py-2">
-                    {m.status === "draft" && (
+                    <div className="flex gap-2">
                       <Link
                         href={`/missions/${m.id}`}
                         className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
                       >
-                        Fill forms →
+                        View
                       </Link>
-                    )}
+                      <Link
+                        href={`/missions/${m.id}/print`}
+                        target="_blank"
+                        className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
+                      >
+                        Print
+                      </Link>
+                      {m.status === "draft" && m.created_by === user.id && (
+                        <Link
+                          href={`/missions/${m.id}`}
+                          className="text-xs px-2 py-1 border border-indigo-700 text-indigo-300 rounded hover:bg-indigo-950"
+                        >
+                          Fill forms
+                        </Link>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

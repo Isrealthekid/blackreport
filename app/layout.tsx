@@ -3,9 +3,8 @@ import "./globals.css";
 import { can, getCurrentUser, getOrganisation } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
-import { getUserCamps } from "@/lib/scope";
 import AppShell, { type NavLink } from "@/components/AppShell";
-import type { Camp, Department, DepartmentMember, Notification, User } from "@/lib/types";
+import type { Camp, Notification, User } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Black Report",
@@ -29,66 +28,86 @@ export default async function RootLayout({
     );
   }
 
-  // Fetch org, notifications, camps, and department membership in parallel.
-  const [org, notifsRaw, myCamps, deptsRaw] = await Promise.all([
+  // Fetch org + notifications. These are lightweight and always needed.
+  const [org, notifsRaw] = await Promise.all([
     getOrganisation(),
     apiMaybe<unknown>("/notifications"),
-    getUserCamps(user),
-    apiMaybe<unknown>("/departments"),
   ]);
 
-  const allDepts = extractItems<Department>(deptsRaw);
   const unread = extractItems<Notification>(notifsRaw).filter((n) => !n.read).length;
   const orgName = org?.name ?? "Black Report";
-  const orgLogo = org?.logo_url ? "◼" : "◼";
+  const orgLogo = "◼";
 
-  // Determine if user is in any department (as any role).
+  // Detect camp membership — single call, resilient.
+  let inCamp = false;
+  try {
+    const camps = extractItems<Camp>(await apiMaybe<unknown>("/camps"));
+    if (user.is_admin) {
+      inCamp = camps.length > 0;
+    } else {
+      // Check if user appears in any camp's members.
+      for (const c of camps) {
+        const detail = await apiMaybe<Camp>(`/camps/${c.id}`);
+        if (detail?.members?.some((m) => m.user_id === user.id)) {
+          inCamp = true;
+          break; // stop early
+        }
+      }
+    }
+  } catch {
+    // On any error, default to showing camp tabs (permissive).
+    inCamp = true;
+  }
+
+  // Department membership: check if user's position maps to a department role.
+  // Camper-only users (no org position) should NOT see Reports.
+  // Everyone else should see Reports — the page handles visibility.
   let inDepartment = false;
   if (user.is_admin) {
     inDepartment = true;
   } else {
-    const checks = await Promise.all(
-      allDepts
-        .filter((d) => !d.is_archived)
-        .map(async (d) => {
-          const members = extractItems<DepartmentMember>(
-            await apiMaybe<unknown>(`/departments/${d.id}/members`),
-          );
-          return members.some((m) => m.user_id === user.id);
-        }),
-    );
-    inDepartment = checks.some(Boolean);
+    // Check user's position. If it maps to a department role, show Reports.
+    const deptPositions = ["admin", "department head", "manager", "reviewer", "reporter", "viewer"];
+    const pos = (user.position ?? "").toLowerCase();
+    if (deptPositions.some((p) => pos.includes(p))) {
+      inDepartment = true;
+    }
+    // If position doesn't help, check if they have any reports or are in departments.
+    if (!inDepartment) {
+      try {
+        const mineRaw = await apiMaybe<unknown>("/reports/mine");
+        const mine = extractItems<unknown>(mineRaw);
+        inDepartment = mine.length > 0;
+      } catch {
+        // Fallback: if user is not purely a camper, show reports.
+        if (!inCamp) inDepartment = true;
+      }
+    }
   }
 
-  const inCamp = myCamps.length > 0;
-
-  // ── Build links based on actual memberships ──
+  // ── Build links ──
   const links: NavLink[] = [
     { href: "/dashboard", label: "Dashboard", icon: "▤", section: "Main" },
   ];
 
-  // Reports section — only if user is in a department (or admin).
   if (inDepartment) {
     links.push({ href: "/reports", label: "Reports", icon: "▪", section: "Reports" });
     links.push({ href: "/reports/new", label: "New Report", icon: "+", section: "Reports" });
     links.push({ href: "/approvals", label: "Approvals", icon: "✓", section: "Reports" });
   }
 
-  // Drone Ops section — only if user is in a camp (or admin).
   if (inCamp || user.is_admin) {
     links.push({ href: "/camps", label: "Camps", icon: "⛺", section: "Drone Ops" });
     links.push({ href: "/missions", label: "Missions", icon: "✈", section: "Drone Ops" });
   }
 
-  // Always show notifications.
   links.push({ href: "/notifications", label: "Notifications", icon: "◉", section: "Main" });
 
-  // Admin sections.
   if (can(user, "manage_org")) {
     links.push({ href: "/clients", label: "Clients", icon: "◆", section: "Configure" });
     links.push({ href: "/templates", label: "Templates", icon: "▦", section: "Configure" });
     links.push({ href: "/departments", label: "Departments", icon: "⌂", section: "Configure" });
-    links.push({ href: "/chains", label: "Chain Templates", icon: "↳", section: "Configure" });
+    // links.push({ href: "/chains", label: "Chain Templates", icon: "↳", section: "Configure" });
     links.push({ href: "/users", label: "Users", icon: "◎", section: "Admin" });
     links.push({ href: "/organisation", label: "Organisation", icon: "⌘", section: "Admin" });
   }

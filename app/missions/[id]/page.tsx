@@ -153,46 +153,47 @@ export default async function MissionDetail({
       </p>
       <div className="mt-4 space-y-3">
         {forms.map((f) => (
-          <Link
+          <div
             key={f.key}
-            href={`/missions/${id}/${f.key}`}
-            className={`block border rounded-lg p-5 transition ${
+            className={`border rounded-lg p-5 transition ${
               f.done
-                ? "border-green-800 bg-green-950/20 hover:border-green-600"
-                : "border-neutral-700 bg-neutral-900 hover:border-indigo-600 hover:bg-indigo-950/10"
+                ? "border-green-800 bg-green-950/20"
+                : "border-neutral-700 bg-neutral-900"
             }`}
           >
             <div className="flex items-center justify-between">
-              <div>
+              <Link href={`/missions/${id}/${f.key}`} className="flex-1 min-w-0 hover:opacity-80">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-lg">{f.label}</span>
                   <span className="text-neutral-400 text-sm">— {f.title}</span>
                 </div>
                 <p className="text-xs text-neutral-500 mt-1">{f.desc}</p>
-              </div>
-              <div className="flex items-center gap-2">
+              </Link>
+              <div className="flex items-center gap-2 shrink-0 ml-3">
                 {f.done && (
-                  <Link
+                  <a
                     href={`/missions/${id}/print`}
                     target="_blank"
-                    onClick={(e) => e.stopPropagation()}
+                    rel="noopener noreferrer"
                     className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
                   >
                     PDF
-                  </Link>
+                  </a>
                 )}
-                {f.done ? (
-                  <span className="text-green-400 text-sm font-medium px-3 py-1 bg-green-900/40 rounded">
-                    ✓ Completed
-                  </span>
-                ) : (
-                  <span className="text-indigo-300 text-sm font-medium px-3 py-1 bg-indigo-900/40 rounded">
-                    Fill form →
-                  </span>
-                )}
+                <Link href={`/missions/${id}/${f.key}`}>
+                  {f.done ? (
+                    <span className="text-green-400 text-sm font-medium px-3 py-1 bg-green-900/40 rounded">
+                      ✓ Completed
+                    </span>
+                  ) : (
+                    <span className="text-indigo-300 text-sm font-medium px-3 py-1 bg-indigo-900/40 rounded">
+                      Fill form →
+                    </span>
+                  )}
+                </Link>
               </div>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
 

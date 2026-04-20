@@ -1,14 +1,39 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { api, apiMaybe } from "./api";
+import { api, ApiError, apiMaybe } from "./api";
 import type { Organisation, User } from "./types";
 
 export const SESSION_COOKIE = "br_token";
 
 export async function getCurrentUser(): Promise<User | null> {
   const jar = await cookies();
-  if (!jar.get(SESSION_COOKIE)) return null;
-  return apiMaybe<User>("/me");
+  const token = jar.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+
+  try {
+    return await api<User>("/me");
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+      // Token is genuinely invalid/expired — clear it.
+      return null;
+    }
+    // Network/server error — don't lose the session. Return a minimal user
+    // object derived from the JWT so the sidebar still renders.
+    try {
+      const payload = JSON.parse(
+        Buffer.from(token.split(".")[1], "base64").toString(),
+      );
+      return {
+        id: payload.uid ?? payload.sub ?? "",
+        email: "",
+        full_name: "User",
+        is_admin: !!payload.adm,
+      };
+    } catch {
+      // Can't decode JWT either — truly broken.
+      return null;
+    }
+  }
 }
 
 export async function requireUser(): Promise<User> {
