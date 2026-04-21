@@ -5,6 +5,12 @@ import { getUserCamps } from "@/lib/scope";
 import { createMissionAction } from "@/app/actions";
 import type { Camp, Mission, User } from "@/lib/types";
 
+const fmtDateTime = (iso: string) =>
+  new Date(iso).toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+
 const statusLabels: Record<string, string> = {
   draft: "Draft",
   submitted: "Pending Approval",
@@ -230,7 +236,7 @@ export default async function MissionsPage({
                 <tr>
                   <th className="text-left px-4 py-2">Mission #</th>
                   <th className="text-left px-4 py-2">Camp</th>
-                  <th className="text-left px-4 py-2">Date</th>
+                  <th className="text-left px-4 py-2">Created</th>
                   <th className="text-left px-4 py-2">Status</th>
                   <th className="text-left px-4 py-2">SAC Forms</th>
                   <th className="text-left px-4 py-2">Actions</th>
@@ -248,7 +254,7 @@ export default async function MissionsPage({
                         </Link>
                       </td>
                       <td className="px-4 py-2 text-neutral-400">{camp?.site_name ?? "—"}</td>
-                      <td className="px-4 py-2 text-neutral-400">{m.mission_date}</td>
+                      <td className="px-4 py-2 text-neutral-400">{fmtDateTime(m.created_at)}</td>
                       <td className="px-4 py-2">
                         <span className={`text-xs px-2 py-0.5 rounded ${statusColors[m.status] ?? "bg-neutral-800"}`}>
                           {statusLabels[m.status] ?? m.status}
@@ -311,7 +317,7 @@ export default async function MissionsPage({
               <th className="text-left px-4 py-2">Mission #</th>
               <th className="text-left px-4 py-2">Camp</th>
               <th className="text-left px-4 py-2">User</th>
-              <th className="text-left px-4 py-2">Date</th>
+              <th className="text-left px-4 py-2">Created</th>
               <th className="text-left px-4 py-2">Status</th>
               <th className="text-left px-4 py-2">SAC Forms</th>
               <th className="text-left px-4 py-2">Actions</th>
@@ -336,7 +342,7 @@ export default async function MissionsPage({
                   </td>
                   <td className="px-4 py-2 text-neutral-400">{camp?.site_name ?? "—"}</td>
                   <td className="px-4 py-2 text-neutral-400">{userNameFor(m)}</td>
-                  <td className="px-4 py-2 text-neutral-400">{m.mission_date}</td>
+                  <td className="px-4 py-2 text-neutral-400">{fmtDateTime(m.created_at)}</td>
                   <td className="px-4 py-2">
                     <span className={`text-xs px-2 py-0.5 rounded ${statusColors[m.status] ?? "bg-neutral-800"}`}>
                       {statusLabels[m.status] ?? m.status}

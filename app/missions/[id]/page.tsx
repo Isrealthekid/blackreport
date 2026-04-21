@@ -7,6 +7,11 @@ import BackButton from "@/components/BackButton";
 import SubmitMission from "./SubmitMission";
 import type { Camp, Mission } from "@/lib/types";
 
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+
 const statusLabels: Record<string, string> = {
   draft: "Draft",
   submitted: "Pending Approval",
@@ -104,7 +109,7 @@ export default async function MissionDetail({
         <div>
           <h1 className="text-2xl font-bold font-mono">{mission.mission_number}</h1>
           <p className="text-sm text-neutral-400 mt-1">
-            {camp?.site_name ?? "—"} · {mission.mission_date}
+            {camp?.site_name ?? "—"} · {fmtDate(mission.mission_date)}
           </p>
         </div>
         <div className="flex items-center gap-2">
