@@ -210,7 +210,19 @@ export default function MissionMap({
         endMarker,
       ];
 
-      map.fitBounds(enclosing.getBounds(), { padding: [24, 24] });
+      // Compute bounds manually from center + enclosingRadius so we don't depend
+      // on Circle.getBounds() (which reads circle._map — can be undefined during
+      // rapid re-renders or React strict-mode double invocation).
+      const metersPerDegLat = 111320;
+      const latDelta = enclosingRadius / metersPerDegLat;
+      const lngDelta =
+        enclosingRadius / (metersPerDegLat * Math.cos((center.lat * Math.PI) / 180));
+      const bounds = L.latLngBounds(
+        [center.lat - latDelta, center.lng - lngDelta],
+        [center.lat + latDelta, center.lng + lngDelta],
+      );
+      map.invalidateSize(false);
+      map.fitBounds(bounds, { padding: [24, 24] });
 
       const inside = curve.every(
         (p) => haversineMeters(p, center) <= enclosingRadius + 0.5,
