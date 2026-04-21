@@ -8,17 +8,33 @@ export async function POST(req: Request) {
   const token = jar.get("br_token")?.value;
   if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { missionId } = await req.json();
+  const { missionId, signatureId } = await req.json();
   if (!missionId) {
     return NextResponse.json({ error: "missing missionId" }, { status: 400 });
   }
 
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  // Attach signature to SAC 18 (RP sign) if provided.
+  if (signatureId) {
+    try {
+      await fetch(`${BASE}/api/v1/missions/${missionId}/sac18/rp-sign`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ signature_id: signatureId, confirmed: true }),
+      });
+    } catch {
+      // best-effort
+    }
+  }
+
+  // Submit the mission.
   const res = await fetch(`${BASE}/api/v1/missions/${missionId}`, {
     method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({ status: "submitted" }),
   });
 
@@ -27,5 +43,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: text || res.statusText }, { status: res.status });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, signatureId });
 }

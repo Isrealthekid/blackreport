@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import MissionMap from "@/components/MissionMap";
 
 function toRFC3339(v: string): string | undefined {
   if (!v) return undefined;
@@ -194,6 +195,15 @@ export default function SAC17Form({
           <Inp label="Date From" value={data.date_from} onChange={(v) => set("date_from", v)} className={input} type="datetime-local" />
           <Inp label="Date To" value={data.date_to} onChange={(v) => set("date_to", v)} className={input} type="datetime-local" />
           <Inp label="Times/Notes" value={data.times_notes} onChange={(v) => set("times_notes", v)} className={input + " col-span-2"} />
+        </div>
+        <div className="col-span-2 mt-3">
+          <MissionMap
+            startLat={data.takeoff_latitude}
+            startLng={data.takeoff_longitude}
+            endLat={data.landing_latitude}
+            endLng={data.landing_longitude}
+            radius={500}
+          />
         </div>
       </section>
 

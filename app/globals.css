@@ -45,4 +45,21 @@ thead, tbody, tr, th, td {
   main { max-width: none !important; padding: 0 !important; margin: 0 !important; }
   body, .printable { background: white !important; color: black !important; }
   .printable { box-shadow: none !important; }
+  /* Ensure Leaflet tiles print (most browsers skip background images by default). */
+  .leaflet-container,
+  .leaflet-tile,
+  .leaflet-marker-icon,
+  .leaflet-marker-shadow,
+  .leaflet-overlay-pane svg {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .mission-map-print .leaflet-control-container,
+  .mission-map-print .leaflet-control-attribution { display: none !important; }
+  .mission-map-print > div:last-child {
+    background: white !important;
+    color: black !important;
+    border-color: #d4d4d4 !important;
+  }
+  .mission-map-print > div:last-child * { color: black !important; }
 }

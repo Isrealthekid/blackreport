@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 const BASE = process.env.API_BASE_URL ?? "";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const jar = await cookies();
@@ -12,9 +12,14 @@ export async function GET(
   if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const res = await fetch(`${BASE}/api/v1/files/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const headers = { Authorization: `Bearer ${token}` };
+
+  // Try /files/{id} first (report attachments), then /signatures/{id} (photo signatures).
+  let res = await fetch(`${BASE}/api/v1/files/${id}`, { headers });
+
+  if (!res.ok) {
+    res = await fetch(`${BASE}/api/v1/signatures/${id}`, { headers });
+  }
 
   if (!res.ok) {
     return NextResponse.json({ error: res.statusText }, { status: res.status });

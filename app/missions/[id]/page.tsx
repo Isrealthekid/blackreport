@@ -32,7 +32,19 @@ export default async function MissionDetail({
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const mission = await apiMaybe<Mission>(`/missions/${id}`);
   if (!mission) notFound();
-  const camp = await apiMaybe<Camp>(`/camps/${mission.camp_id}`);
+  const [camp, sac16, sac18] = await Promise.all([
+    apiMaybe<Camp>(`/camps/${mission.camp_id}`),
+    apiMaybe<Record<string, unknown>>(`/missions/${id}/sac16`),
+    apiMaybe<Record<string, unknown>>(`/missions/${id}/sac18`),
+  ]);
+
+  // Collect signature IDs from SAC forms.
+  const signatures: { label: string; id: string }[] = [];
+  if (sac16?.signoff_signature_id) signatures.push({ label: "SAC 16 Signoff", id: String(sac16.signoff_signature_id) });
+  if (sac18?.rp_signature_id) signatures.push({ label: "RP Signature", id: String(sac18.rp_signature_id) });
+  if (sac18?.supervisor_signature_id) signatures.push({ label: "Supervisor Signature", id: String(sac18.supervisor_signature_id) });
+  if (sac18?.post_rp_signature_id) signatures.push({ label: "Post-flight RP", id: String(sac18.post_rp_signature_id) });
+  if (sac18?.post_supervisor_signature_id) signatures.push({ label: "Post-flight Supervisor", id: String(sac18.post_supervisor_signature_id) });
 
   const forms = [
     {
@@ -196,6 +208,33 @@ export default async function MissionDetail({
           </div>
         ))}
       </div>
+
+      {/* ── Signatures ── */}
+      {signatures.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold">Verification Signatures</h2>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {signatures.map((sig) => (
+              <div key={sig.id} className="border border-neutral-800 rounded-lg p-3">
+                <div className="text-xs text-neutral-400 mb-2">{sig.label}</div>
+                <img
+                  src={`/api/file/${sig.id}`}
+                  alt={sig.label}
+                  className="max-w-full max-h-40 rounded border border-neutral-700 object-contain"
+                />
+                <a
+                  href={`/api/file/${sig.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-xs text-blue-400 hover:underline"
+                >
+                  View full image
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Submit (only for draft) ── */}
       {mission.status === "draft" && (

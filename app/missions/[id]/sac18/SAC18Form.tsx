@@ -35,7 +35,7 @@ export default function SAC18Form({
     rp_observations: e.rp_observations ?? "",
     pre_flight_checks_by: e.pre_flight_checks_by ?? "",
     pre_flight_checks_at: e.pre_flight_checks_at ?? "",
-    permissions_given: e.permissions_given ?? "YES",
+     permissions_given: e.permissions_given ?? "YES",
     permissions_at: e.permissions_at ?? "",
     pre_flight_briefing_by: e.pre_flight_briefing_by ?? "",
     pre_flight_briefing_at: e.pre_flight_briefing_at ?? "",

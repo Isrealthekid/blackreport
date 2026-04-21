@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import { getUserCamps } from "@/lib/scope";
 import { createMissionAction } from "@/app/actions";
-import type { Camp, Mission } from "@/lib/types";
+import type { Camp, Mission, User } from "@/lib/types";
 
 const statusLabels: Record<string, string> = {
   draft: "Draft",
@@ -28,8 +28,18 @@ export default async function MissionsPage({
   const sp = await searchParams;
   const myCamps = await getUserCamps(user);
   const qs = sp.camp_id ? `?camp_id=${sp.camp_id}` : "";
-  const allMissions = (await apiMaybe<Mission[]>(`/missions${qs}`)) ?? [];
+  const [allMissions, allUsers] = await Promise.all([
+    apiMaybe<Mission[]>(`/missions${qs}`).then((m) => m ?? []),
+    apiMaybe<User[]>("/users").then((u) => u ?? []),
+  ]);
   const campMap = new Map(myCamps.map((c) => [c.id, c]));
+  const userMap = new Map(allUsers.map((u) => [u.id, u.full_name]));
+  const camperNameFor = (m: Mission): string => {
+    if (!m.created_by) return "—";
+    const camp = campMap.get(m.camp_id);
+    const member = camp?.members?.find((mm) => mm.user_id === m.created_by);
+    return member?.full_name ?? userMap.get(m.created_by) ?? m.created_by.slice(0, 8);
+  };
 
   // Determine user's camp role.
   const isAdmin = user.is_admin;
@@ -174,6 +184,7 @@ export default async function MissionsPage({
             <tr>
               <th className="text-left px-4 py-2">Mission #</th>
               <th className="text-left px-4 py-2">Camp</th>
+              <th className="text-left px-4 py-2">Camper</th>
               <th className="text-left px-4 py-2">Date</th>
               <th className="text-left px-4 py-2">Status</th>
               <th className="text-left px-4 py-2">SAC Forms</th>
@@ -183,7 +194,7 @@ export default async function MissionsPage({
           <tbody>
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-center py-10 text-neutral-500">
+                <td colSpan={7} className="text-center py-10 text-neutral-500">
                   No missions yet. Create one above to get started.
                 </td>
               </tr>
@@ -198,6 +209,7 @@ export default async function MissionsPage({
                     </Link>
                   </td>
                   <td className="px-4 py-2 text-neutral-400">{camp?.site_name ?? "—"}</td>
+                  <td className="px-4 py-2 text-neutral-400">{camperNameFor(m)}</td>
                   <td className="px-4 py-2 text-neutral-400">{m.mission_date}</td>
                   <td className="px-4 py-2">
                     <span className={`text-xs px-2 py-0.5 rounded ${statusColors[m.status] ?? "bg-neutral-800"}`}>
