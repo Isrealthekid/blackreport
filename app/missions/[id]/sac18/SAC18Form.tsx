@@ -35,7 +35,7 @@ export default function SAC18Form({
     rp_observations: e.rp_observations ?? "",
     pre_flight_checks_by: e.pre_flight_checks_by ?? "",
     pre_flight_checks_at: e.pre_flight_checks_at ?? "",
-    permissions_given: e.permissions_given ?? "",
+    permissions_given: e.permissions_given ?? "YES",
     permissions_at: e.permissions_at ?? "",
     pre_flight_briefing_by: e.pre_flight_briefing_by ?? "",
     pre_flight_briefing_at: e.pre_flight_briefing_at ?? "",
@@ -178,7 +178,7 @@ export default function SAC18Form({
           <div><label className="text-xs text-neutral-400">RP Observations</label><textarea rows={2} value={post.rp_observations} onChange={(ev) => setP("rp_observations", ev.target.value)} className={input} /></div>
           <div><label className="text-xs text-neutral-400">Pre-flight Checks By</label><input value={post.pre_flight_checks_by} onChange={(ev) => setP("pre_flight_checks_by", ev.target.value)} className={input} /></div>
           <div><label className="text-xs text-neutral-400">Checks At</label><input type="datetime-local" value={post.pre_flight_checks_at} onChange={(ev) => setP("pre_flight_checks_at", ev.target.value)} className={input} /></div>
-          <div><label className="text-xs text-neutral-400">Permissions Given</label><input value={post.permissions_given} onChange={(ev) => setP("permissions_given", ev.target.value)} className={input} /></div>
+          <div><label className="text-xs text-neutral-400">Permissions Given</label><select value={post.permissions_given} onChange={(ev) => setP("permissions_given", ev.target.value)} className={"bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-sm w-full"}><option value="YES">YES</option><option value="NO">NO</option></select></div>
           <div><label className="text-xs text-neutral-400">Permissions At</label><input type="datetime-local" value={post.permissions_at} onChange={(ev) => setP("permissions_at", ev.target.value)} className={input} /></div>
           <div><label className="text-xs text-neutral-400">Briefing By</label><input value={post.pre_flight_briefing_by} onChange={(ev) => setP("pre_flight_briefing_by", ev.target.value)} className={input} /></div>
           <div><label className="text-xs text-neutral-400">Briefing At</label><input type="datetime-local" value={post.pre_flight_briefing_at} onChange={(ev) => setP("pre_flight_briefing_at", ev.target.value)} className={input} /></div>
