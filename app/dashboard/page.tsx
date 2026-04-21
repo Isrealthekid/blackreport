@@ -248,7 +248,7 @@ export default async function DashboardPage() {
       ? allCampMissions
       : isSupervisor
         ? allCampMissions
-        : allCampMissions.filter((m) => m.created_by === user.id);
+        : allCampMissions.filter((m) => m.reporter_id === user.id);
 
     const draftMissions = myMissions.filter((m) => m.status === "draft");
     const approvedMissions = myMissions.filter((m) => m.status === "approved");

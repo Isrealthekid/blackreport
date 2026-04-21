@@ -228,7 +228,8 @@ export interface Mission {
   id: string;
   organisation_id: string;
   camp_id: string;
-  created_by?: string;
+  /** User ID of the person who created/filled the mission. */
+  reporter_id?: string;
   mission_number: string;
   mission_date: string;
   status: MissionStatus;

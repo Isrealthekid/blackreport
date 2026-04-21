@@ -47,8 +47,15 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
   for (const m of camp?.members ?? [])
     if (!userMap.has(m.user_id)) userMap.set(m.user_id, m.full_name);
 
-  const camperName = mission.created_by
-    ? userMap.get(mission.created_by) ?? mission.created_by.slice(0, 8)
+  // If the mission's reporter_id still isn't in the map (e.g. /users is
+  // restricted for this role), fetch the user by id directly.
+  if (mission.reporter_id && !userMap.has(mission.reporter_id)) {
+    const u = await apiMaybe<User>(`/users/${mission.reporter_id}`);
+    if (u) userMap.set(u.id, u.full_name);
+  }
+
+  const camperName = mission.reporter_id
+    ? userMap.get(mission.reporter_id) ?? mission.reporter_id.slice(0, 8)
     : "—";
 
   const hours = (sac16?.flight_hours as Array<{ hour: number; mission_order: string; report: string }>) ?? [];
