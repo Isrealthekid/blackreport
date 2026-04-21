@@ -32,13 +32,29 @@ export default async function MissionsPage({
     apiMaybe<Mission[]>(`/missions${qs}`).then((m) => m ?? []),
     apiMaybe<User[]>("/users").then((u) => u ?? []),
   ]);
-  const campMap = new Map(myCamps.map((c) => [c.id, c]));
-  const userMap = new Map(allUsers.map((u) => [u.id, u.full_name]));
-  const camperNameFor = (m: Mission): string => {
+
+  // Fetch camp detail for every camp referenced by a mission — the list
+  // endpoint may return camps without their `members` array, but we need
+  // member names to resolve each mission's creator.
+  const referencedCampIds = Array.from(
+    new Set(allMissions.map((m) => m.camp_id).filter(Boolean)),
+  );
+  const campDetails = await Promise.all(
+    referencedCampIds.map((cid) => apiMaybe<Camp>(`/camps/${cid}`)),
+  );
+  const campMap = new Map<string, Camp>();
+  for (const c of myCamps) campMap.set(c.id, c);
+  for (const c of campDetails) if (c) campMap.set(c.id, c);
+
+  const userMap = new Map<string, string>();
+  for (const u of allUsers) userMap.set(u.id, u.full_name);
+  for (const c of campMap.values())
+    for (const m of c.members ?? []) if (!userMap.has(m.user_id)) userMap.set(m.user_id, m.full_name);
+  if (!userMap.has(user.id)) userMap.set(user.id, user.full_name);
+
+  const userNameFor = (m: Mission): string => {
     if (!m.created_by) return "—";
-    const camp = campMap.get(m.camp_id);
-    const member = camp?.members?.find((mm) => mm.user_id === m.created_by);
-    return member?.full_name ?? userMap.get(m.created_by) ?? m.created_by.slice(0, 8);
+    return userMap.get(m.created_by) ?? m.created_by.slice(0, 8);
   };
 
   // Determine user's camp role.
@@ -184,7 +200,7 @@ export default async function MissionsPage({
             <tr>
               <th className="text-left px-4 py-2">Mission #</th>
               <th className="text-left px-4 py-2">Camp</th>
-              <th className="text-left px-4 py-2">Camper</th>
+              <th className="text-left px-4 py-2">User</th>
               <th className="text-left px-4 py-2">Date</th>
               <th className="text-left px-4 py-2">Status</th>
               <th className="text-left px-4 py-2">SAC Forms</th>
@@ -209,7 +225,7 @@ export default async function MissionsPage({
                     </Link>
                   </td>
                   <td className="px-4 py-2 text-neutral-400">{camp?.site_name ?? "—"}</td>
-                  <td className="px-4 py-2 text-neutral-400">{camperNameFor(m)}</td>
+                  <td className="px-4 py-2 text-neutral-400">{userNameFor(m)}</td>
                   <td className="px-4 py-2 text-neutral-400">{m.mission_date}</td>
                   <td className="px-4 py-2">
                     <span className={`text-xs px-2 py-0.5 rounded ${statusColors[m.status] ?? "bg-neutral-800"}`}>

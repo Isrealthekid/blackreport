@@ -42,11 +42,14 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
     apiMaybe<User[]>("/users"),
   ]);
 
+  const userMap = new Map<string, string>();
+  for (const u of users ?? []) userMap.set(u.id, u.full_name);
+  for (const m of camp?.members ?? [])
+    if (!userMap.has(m.user_id)) userMap.set(m.user_id, m.full_name);
+
   const camperName = mission.created_by
-    ? camp?.members?.find((m) => m.user_id === mission.created_by)?.full_name
-      ?? users?.find((u) => u.id === mission.created_by)?.full_name
-      ?? mission.created_by.slice(0, 8)
-    : null;
+    ? userMap.get(mission.created_by) ?? mission.created_by.slice(0, 8)
+    : "—";
 
   const hours = (sac16?.flight_hours as Array<{ hour: number; mission_order: string; report: string }>) ?? [];
   const observers = (sac17?.observers as Array<{ name: string; contact: string }>) ?? [];
@@ -75,9 +78,7 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
 
       <header className="border-b-2 border-black pb-3 mb-6">
         <div className="text-xs uppercase tracking-wider text-neutral-600">{org?.name ?? "Black Report"}</div>
-        {camperName && (
-          <div className="text-sm font-semibold text-neutral-800">Camper: {camperName}</div>
-        )}
+        <div className="text-sm font-semibold text-neutral-800">User: {camperName}</div>
         <h1 className="text-2xl font-bold">Mission {mission.mission_number}</h1>
         <div className="text-sm text-neutral-700">
           {camp?.site_name} · {mission.mission_date} · Status: {mission.status}
