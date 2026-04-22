@@ -5,8 +5,20 @@ import {
   deactivateUserAction,
   importUsersCsvAction,
 } from "@/app/actions";
-import type { Camp, Department, Role, User } from "@/lib/types";
+import type {
+  Camp,
+  CampMember,
+  Department,
+  DepartmentMember,
+  Role,
+  User,
+} from "@/lib/types";
 import { ROLE_LABELS } from "@/lib/types";
+
+const CAMP_ROLE_LABELS: Record<string, string> = {
+  supervisor: "Supervisor",
+  camper: "Camper",
+};
 
 const POSITIONS: { v: string; l: string }[] = [
   { v: "", l: "— No position —" },
@@ -35,6 +47,50 @@ export default async function UsersPage() {
   const activeDepts = (departments ?? []).filter((d) => !d.is_archived);
   const campList = camps ?? [];
 
+  // Build per-user department and camp membership maps. Department and camp
+  // list endpoints don't include members, so fetch each one individually.
+  const deptMembersByDept = await Promise.all(
+    (departments ?? []).map(async (d) => ({
+      dept: d,
+      members: (await apiMaybe<DepartmentMember[]>(`/departments/${d.id}/members`)) ?? [],
+    })),
+  );
+  const campDetails = await Promise.all(
+    campList.map((c) => apiMaybe<Camp>(`/camps/${c.id}`)),
+  );
+
+  const userDepartments = new Map<string, { name: string; role: Role }[]>();
+  for (const { dept, members } of deptMembersByDept) {
+    for (const m of members) {
+      const list = userDepartments.get(m.user_id) ?? [];
+      list.push({ name: dept.name, role: m.role });
+      userDepartments.set(m.user_id, list);
+    }
+  }
+
+  const userCampRoles = new Map<string, CampMember[]>();
+  for (const c of campDetails) {
+    for (const m of c?.members ?? []) {
+      const list = userCampRoles.get(m.user_id) ?? [];
+      list.push(m);
+      userCampRoles.set(m.user_id, list);
+    }
+  }
+
+  function positionLabel(u: User): string {
+    const deptRoles = (userDepartments.get(u.id) ?? []).map((d) => ROLE_LABELS[d.role]);
+    const campRoles = (userCampRoles.get(u.id) ?? []).map((m) => CAMP_ROLE_LABELS[m.role] ?? m.role);
+    const combined = Array.from(new Set([...deptRoles, ...campRoles].filter(Boolean)));
+    if (combined.length > 0) return combined.join(", ");
+    return u.position ?? "—";
+  }
+
+  function departmentLabel(u: User): string {
+    const depts = userDepartments.get(u.id);
+    if (!depts || depts.length === 0) return "—";
+    return Array.from(new Set(depts.map((d) => d.name))).join(", ");
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold">Users</h1>
@@ -46,6 +102,7 @@ export default async function UsersPage() {
               <th className="text-left px-4 py-2">Name</th>
               <th className="text-left px-4 py-2">Email</th>
               <th className="text-left px-4 py-2">Position</th>
+              <th className="text-left px-4 py-2">Department</th>
               <th className="text-left px-4 py-2">Admin</th>
               <th className="text-left px-4 py-2">Status</th>
               <th></th>
@@ -53,7 +110,7 @@ export default async function UsersPage() {
           </thead>
           <tbody>
             {userList.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-10 text-neutral-500">No users yet.</td></tr>
+              <tr><td colSpan={7} className="text-center py-10 text-neutral-500">No users yet.</td></tr>
             )}
             {userList.map((u) => (
               <tr
@@ -62,7 +119,8 @@ export default async function UsersPage() {
               >
                 <td className="px-4 py-2">{u.full_name}</td>
                 <td className="px-4 py-2 text-neutral-400">{u.email}</td>
-                <td className="px-4 py-2 text-neutral-400">{u.position ?? "—"}</td>
+                <td className="px-4 py-2 text-neutral-400">{positionLabel(u)}</td>
+                <td className="px-4 py-2 text-neutral-400">{departmentLabel(u)}</td>
                 <td className="px-4 py-2 text-xs text-neutral-400">
                   {u.is_admin ? "yes" : "—"}
                 </td>

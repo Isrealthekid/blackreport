@@ -58,6 +58,37 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
     ? userMap.get(mission.reporter_id) ?? mission.reporter_id.slice(0, 8)
     : "—";
 
+  let approverName: string | null = mission.approved_by_name ?? null;
+  if (!approverName && mission.approved_by) {
+    approverName = userMap.get(mission.approved_by) ?? null;
+    if (!approverName) {
+      const approver = await apiMaybe<User>(`/users/${mission.approved_by}`);
+      if (approver) {
+        userMap.set(approver.id, approver.full_name);
+        approverName = approver.full_name;
+      }
+    }
+  }
+  const approvedAtLabel = mission.approved_at
+    ? new Date(mission.approved_at).toLocaleString("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      })
+    : null;
+
+  const missionDateLabel = mission.mission_date
+    ? new Date(mission.mission_date).toLocaleDateString("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+      })
+    : mission.mission_date;
+
+  const slug = (s: string) =>
+    s.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "_").trim();
+  const dateSlug = mission.mission_date ? mission.mission_date.slice(0, 10) : "";
+  const fileName = [slug(camperName), dateSlug, slug(mission.mission_number)]
+    .filter(Boolean)
+    .join("_");
+
   const hours = (sac16?.flight_hours as Array<{ hour: number; mission_order: string; report: string }>) ?? [];
   const observers = (sac17?.observers as Array<{ name: string; contact: string }>) ?? [];
   const otherPersons = (sac17?.other_persons as Record<string, string>) ?? {};
@@ -80,17 +111,23 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
   return (
     <div className="printable bg-white text-black font-serif max-w-3xl mx-auto p-8 rounded shadow-lg">
       <div className="flex justify-end print:hidden mb-4">
-        <PrintButton />
+        <PrintButton fileName={fileName} />
       </div>
 
-      <header className="border-b-2 border-black pb-3 mb-6">
+      <div className="mission-print-header border-b-2 border-black pb-3 mb-6">
         <div className="text-xs uppercase tracking-wider text-neutral-600">{org?.name ?? "Black Report"}</div>
         <div className="text-sm font-semibold text-neutral-800">User: {camperName}</div>
         <h1 className="text-2xl font-bold">Mission {mission.mission_number}</h1>
         <div className="text-sm text-neutral-700">
-          {camp?.site_name} · {mission.mission_date} · Status: {mission.status}
+          {camp?.site_name} · {missionDateLabel} · Status: {mission.status}
         </div>
-      </header>
+        {mission.status === "approved" && approverName && (
+          <div className="text-sm text-neutral-700 mt-1">
+            Approved by: {approverName}
+            {approvedAtLabel ? ` · ${approvedAtLabel}` : ""}
+          </div>
+        )}
+      </div>
 
       {/* ════════ SAC 16 ════════ */}
       {sac16 && (

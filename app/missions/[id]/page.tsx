@@ -5,7 +5,7 @@ import { apiMaybe } from "@/lib/api";
 import { updateMissionAction, deleteMissionAction } from "@/app/actions";
 import BackButton from "@/components/BackButton";
 import SubmitMission from "./SubmitMission";
-import type { Camp, Mission } from "@/lib/types";
+import type { Camp, Mission, User } from "@/lib/types";
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-GB", {
@@ -42,6 +42,18 @@ export default async function MissionDetail({
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac16`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac18`),
   ]);
+
+  let approverName: string | null = mission.approved_by_name ?? null;
+  if (!approverName && mission.approved_by) {
+    const approver = await apiMaybe<User>(`/users/${mission.approved_by}`);
+    approverName = approver?.full_name ?? null;
+  }
+  const approvedAtLabel = mission.approved_at
+    ? new Date(mission.approved_at).toLocaleString("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      })
+    : null;
 
   // Collect signature IDs from SAC forms.
   const signatures: { label: string; id: string }[] = [];
@@ -250,7 +262,13 @@ export default async function MissionDetail({
 
       {mission.status === "approved" && (
         <div className="mt-8 border border-green-800 bg-green-950/30 rounded-lg p-4 text-sm text-green-200">
-          ✓ This mission has been approved.
+          <div>✓ This mission has been approved.</div>
+          {approverName && (
+            <div className="mt-1 text-xs text-green-300/80">
+              Approved by {approverName}
+              {approvedAtLabel ? ` on ${approvedAtLabel}` : ""}
+            </div>
+          )}
         </div>
       )}
 

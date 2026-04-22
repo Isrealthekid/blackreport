@@ -236,6 +236,9 @@ export interface Mission {
   has_sac16?: boolean;
   has_sac17?: boolean;
   has_sac18?: boolean;
+  approved_by?: string;
+  approved_by_name?: string;
+  approved_at?: string;
   created_at: string;
   updated_at: string;
 }
