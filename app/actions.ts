@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { api, ApiError } from "@/lib/api";
-import { SESSION_COOKIE, getCurrentUser } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/auth";
 import type {
   Camp,
   ChainLevel,
@@ -772,19 +772,11 @@ export async function updateMissionAction(formData: FormData) {
     const v = formData.get(k);
     if (v != null && v !== "") body[k] = String(v);
   }
-  const status = String(formData.get("status") ?? "");
-  if (status === "approved") {
-    const actor = await getCurrentUser();
-    if (actor) {
-      body.approved_by = actor.id;
-      body.approved_by_name = actor.full_name;
-      body.approved_at = new Date().toISOString();
-    }
-  }
   await api(`/missions/${id}`, { method: "PATCH", body });
   revalidatePath(`/missions/${id}`);
   revalidatePath("/missions");
 
+  const status = String(formData.get("status") ?? "");
   if (status === "approved") redirect(`/missions/${id}?approved=1`);
   if (status === "rejected") redirect(`/missions/${id}?rejected=1`);
   if (status === "submitted") redirect(`/missions/${id}`);
