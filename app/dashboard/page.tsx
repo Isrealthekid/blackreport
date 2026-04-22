@@ -83,7 +83,10 @@ export default async function DashboardPage() {
 
     const pendingReports = allReports.filter((r) => r.status === "pending");
     const approvedReports = allReports.filter((r) => r.status === "approved");
-    const rejectedReports = allReports.filter((r) => r.status === "rejected");
+    const rejectedReports = allReports.filter(
+      (r) => r.status === "rejected" || r.status === "revision_requested",
+    );
+    const draftReports = allReports.filter((r) => r.status === "draft");
     const pendingMissions = allMissions.filter((m) => m.status === "submitted");
 
     return (
@@ -96,11 +99,11 @@ export default async function DashboardPage() {
           <Card label="Total Reports" value={allReports.length} href="/reports" />
           <Card label="Pending Approval" value={pendingReports.length} href="/approvals" tone={pendingReports.length ? "text-yellow-400" : ""} />
           <Card label="Approved" value={approvedReports.length} tone="text-green-400" />
-          <Card label="Rejected" value={rejectedReports.length} tone={rejectedReports.length ? "text-red-400" : ""} />
+          <Card label="Rejected / Revise" value={rejectedReports.length} tone={rejectedReports.length ? "text-red-400" : ""} />
           <Card label="Users" value={allUsers.length} href="/users" />
           <Card label="Departments" value={allDepts.length} href="/departments" />
           <Card label="Templates" value={allTemplates.length} href="/templates" />
-          <Card label="Unread" value={unread} href="/notifications" tone={unread ? "text-red-400" : ""} />
+          <Card label="Drafts" value={draftReports.length} href="/reports" tone={draftReports.length ? "text-orange-400" : ""} />
         </div>
 
         {/* ── Drone ops summary ── */}
@@ -167,8 +170,9 @@ export default async function DashboardPage() {
 
     const pending = uniqueReports.filter((r) => r.status === "pending");
     const approved = uniqueReports.filter((r) => r.status === "approved");
-    const rejected = uniqueReports.filter((r) => r.status === "rejected");
-    const revisionReq = uniqueReports.filter((r) => r.status === "revision_requested");
+    const rejected = uniqueReports.filter(
+      (r) => r.status === "rejected" || r.status === "revision_requested",
+    );
 
     // Unique reporters in these departments
     const reporterIds = new Set(uniqueReports.map((r) => r.reporter_id));
@@ -176,6 +180,7 @@ export default async function DashboardPage() {
     const drafts = mineList.filter(
       (r) => r.status === "draft" || r.status === "revision_requested",
     );
+    const myDraftsOnly = mineList.filter((r) => r.status === "draft");
 
     return (
       <div>
@@ -190,11 +195,10 @@ export default async function DashboardPage() {
           <Card label="Team Reports" value={uniqueReports.length} href="/reports" />
           <Card label="Pending Approval" value={pending.length} href="/approvals" tone={pending.length ? "text-yellow-400" : ""} />
           <Card label="Approved" value={approved.length} tone="text-green-400" />
-          <Card label="Rejected" value={rejected.length} tone={rejected.length ? "text-red-400" : ""} />
-          <Card label="Needs Revision" value={revisionReq.length} tone={revisionReq.length ? "text-orange-400" : ""} />
+          <Card label="Rejected / Revise" value={rejected.length} tone={rejected.length ? "text-red-400" : ""} />
           <Card label="Team Members" value={reporterIds.size} />
           <Card label="My Review Queue" value={queueList.length} href="/approvals" tone={queueList.length ? "text-blue-400" : ""} />
-          <Card label="Unread" value={unread} href="/notifications" tone={unread ? "text-red-400" : ""} />
+          <Card label="Drafts" value={myDraftsOnly.length} href="/reports" tone={myDraftsOnly.length ? "text-orange-400" : ""} />
         </div>
 
         {/* ── Approval queue ── */}
@@ -369,9 +373,12 @@ export default async function DashboardPage() {
   const drafts = mineList.filter(
     (r) => r.status === "draft" || r.status === "revision_requested",
   );
+  const draftsOnly = mineList.filter((r) => r.status === "draft");
   const myPending = mineList.filter((r) => r.status === "pending");
   const myApproved = mineList.filter((r) => r.status === "approved");
-  const myRejected = mineList.filter((r) => r.status === "rejected");
+  const myRejected = mineList.filter(
+    (r) => r.status === "rejected" || r.status === "revision_requested",
+  );
 
   const today = new Date().toISOString().slice(0, 10);
   const submittedToday = mineList.some(
@@ -409,9 +416,8 @@ export default async function DashboardPage() {
         <Card label="Total Reports" value={mineList.length} href="/reports" />
         <Card label="Pending" value={myPending.length} tone={myPending.length ? "text-yellow-400" : ""} />
         <Card label="Approved" value={myApproved.length} tone="text-green-400" />
-        <Card label="Rejected" value={myRejected.length} tone={myRejected.length ? "text-red-400" : ""} />
-        <Card label="Drafts / Revise" value={drafts.length} href="/reports" tone={drafts.length ? "text-orange-400" : ""} />
-        <Card label="Unread" value={unread} href="/notifications" tone={unread ? "text-red-400" : ""} />
+        <Card label="Rejected / Revise" value={myRejected.length} tone={myRejected.length ? "text-red-400" : ""} />
+        <Card label="Drafts" value={draftsOnly.length} href="/reports" tone={draftsOnly.length ? "text-orange-400" : ""} />
       </div>
 
       {drafts.length > 0 && (
