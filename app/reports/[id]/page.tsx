@@ -72,6 +72,19 @@ export default async function ReportDetail({
   const reporter = (users ?? []).find((u) => u.id === report!.reporter_id);
   const dept = (departments ?? []).find((d) => d.id === report!.department_id);
 
+  // Find the final approver (latest "approve" audit entry) when the report
+  // has reached an approved state.
+  const approvalEntry =
+    report!.status === "approved"
+      ? [...(audit ?? [])]
+          .filter((a) => a.action === "approve" || a.action === "auto_approve")
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          )[0] ?? null
+      : null;
+
   // The user can approve if they're an admin or hold an approver role
   // (manager, department_head, reviewer) in the report's department.
   const APPROVER_ROLES = ["admin", "department_head", "manager", "reviewer"];
@@ -116,6 +129,12 @@ export default async function ReportDetail({
           {report!.submitted_at && (
             <p className="text-xs text-neutral-500 mt-0.5">
               Submitted {new Date(report!.submitted_at).toLocaleString()}
+            </p>
+          )}
+          {approvalEntry && (
+            <p className="text-xs text-green-300 mt-0.5">
+              Approved by {approvalEntry.actor_name} on{" "}
+              {new Date(approvalEntry.created_at).toLocaleString()}
             </p>
           )}
         </div>

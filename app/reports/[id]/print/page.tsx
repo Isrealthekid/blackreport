@@ -50,12 +50,23 @@ export default async function PrintablePage({
   const reporter = (users ?? []).find((u) => u.id === report!.reporter_id);
   const dept = (departments ?? []).find((d) => d.id === report!.department_id);
 
+  const approvalEntry =
+    report!.status === "approved"
+      ? [...(audit ?? [])]
+          .filter((a) => a.action === "approve" || a.action === "auto_approve")
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          )[0] ?? null
+      : null;
+
   return (
     <div className="printable bg-white text-black font-serif max-w-2xl mx-auto p-8 rounded shadow-lg">
       <div className="flex justify-end print:hidden mb-4">
         <PrintButton />
       </div>
-      <header className="border-b-2 border-black pb-3 mb-6">
+      <div className="report-print-header border-b-2 border-black pb-3 mb-6">
         <div className="text-xs uppercase tracking-wider text-neutral-600">
           {org?.name ?? "Black Report"}
         </div>
@@ -68,7 +79,13 @@ export default async function PrintablePage({
           Status: <strong className="capitalize">{report!.status.replace("_", " ")}</strong>
           {report!.submitted_at && ` · Submitted ${new Date(report!.submitted_at).toLocaleString()}`}
         </div>
-      </header>
+        {approvalEntry && (
+          <div className="text-sm text-neutral-700 mt-1">
+            Approved by: {approvalEntry.actor_name} ·{" "}
+            {new Date(approvalEntry.created_at).toLocaleString()}
+          </div>
+        )}
+      </div>
 
       {(template?.schema ?? []).map((f) => {
         const raw = (report!.data ?? {})[f.key];
