@@ -50,12 +50,12 @@ export default async function LoginPage({
           <button className="w-full bg-white text-black font-semibold rounded px-3 py-2 hover:bg-neutral-200">
             Sign in
           </button>
-          <a
+          {/* <a
             href="/login?bootstrap=1"
             className="text-xs text-neutral-400 hover:underline block text-center"
           >
             First time setup? Bootstrap the first admin →
-          </a>
+          </a> */}
         </form>
       )}
     </div>
