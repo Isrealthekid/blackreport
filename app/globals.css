@@ -99,6 +99,23 @@ html, body {
 [data-theme="light"] :where(.bg-white .text-black)           { color: var(--accent-fg); }
 [data-theme="light"] :where(.hover\:bg-neutral-200:hover)    { background-color: #262626; color: var(--accent-fg); }
 
+/* Printable sheets must always render as a white page (a "paper" surface),
+ * even when the rest of the UI is in light mode. The `.bg-white` flip above
+ * uses --accent / --accent-fg, so re-pinning those vars on .printable (and
+ * its descendants) restores the paper look without touching everything else. */
+[data-theme="light"] .printable,
+[data-theme="light"] .printable * {
+  --accent:    #ffffff;
+  --accent-fg: #000000;
+}
+[data-theme="light"] .printable :where(.bg-neutral-100) { background-color: #f5f5f5; }
+[data-theme="light"] .printable :where(.border-neutral-300) { border-color: #d4d4d4; }
+[data-theme="light"] .printable :where(.border-neutral-200) { border-color: #e5e5e5; }
+[data-theme="light"] .printable :where(.text-neutral-600,
+                                        .text-neutral-700,
+                                        .text-neutral-800) { color: #404040; }
+[data-theme="light"] .printable :where(.shadow-lg) { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+
 /* Tinted alert/info panels — soften to readable shades on white */
 [data-theme="light"] :where(.bg-yellow-950\/30, .bg-yellow-950\/20) { background-color: #fef9c3; }
 [data-theme="light"] :where(.bg-green-950\/30,  .bg-green-950\/20)  { background-color: #dcfce7; }
