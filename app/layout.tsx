@@ -99,6 +99,7 @@ export default async function RootLayout({
   if (inCamp || user.is_admin) {
     links.push({ href: "/camps", label: "Camps", icon: "⛺", section: "Drone Ops" });
     links.push({ href: "/missions", label: "Missions", icon: "✈", section: "Drone Ops" });
+    links.push({ href: "/mission-approvals", label: "Mission Approvals", icon: "✓", section: "Drone Ops" });
   }
 
   links.push({ href: "/notifications", label: "Notifications", icon: "◉", section: "Main" });

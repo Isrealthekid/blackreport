@@ -208,6 +208,16 @@ export interface CampMember {
   full_name: string;
 }
 
+export interface PastCampMember {
+  user_id: string;
+  role: CampRole;
+  email: string;
+  full_name: string;
+  joined_at: string;
+  removed_at: string;
+  removed_by?: string | null;
+}
+
 export interface Camp {
   id: string;
   organisation_id: string;
@@ -220,6 +230,9 @@ export interface Camp {
   longitude?: number;
   address?: string;
   members?: CampMember[];
+  /** Optional: the chain attached to this camp's mission approvals. */
+  chain_template_id?: string | null;
+  chain_template_name?: string | null;
 }
 
 export type MissionStatus = "draft" | "submitted" | "approved" | "rejected";
@@ -236,11 +249,26 @@ export interface Mission {
   has_sac16?: boolean;
   has_sac17?: boolean;
   has_sac18?: boolean;
-  approved_by?: string;
+  // Chain of command
+  chain_template_id?: string | null;
+  current_approval_level?: number;
+  approved_by?: string | null;
   approved_by_name?: string;
-  approved_at?: string;
+  approved_at?: string | null;
+  rejected_by?: string | null;
+  rejected_at?: string | null;
+  rejection_reason?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface MissionApprovalEntry {
+  level_index: number;
+  actor_id: string;
+  actor_name: string;
+  action: ApprovalAction | string;
+  comment?: string | null;
+  created_at: string;
 }
 
 export interface FlightHour {

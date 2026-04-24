@@ -210,11 +210,19 @@ function Page({
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold">{title}</h1>
-        <Link href="/reports/new" className="px-3 py-1.5 bg-white text-black rounded text-sm font-medium">
-          New report
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/reports/print-batch?status=approved"
+            className="px-3 py-1.5 border border-neutral-700 hover:bg-neutral-800 rounded text-sm"
+          >
+            Print range
+          </Link>
+          <Link href="/reports/new" className="px-3 py-1.5 bg-white text-black rounded text-sm font-medium">
+            New report
+          </Link>
+        </div>
       </div>
       {subtitle && <p className="text-xs text-neutral-500 mt-1">{subtitle}</p>}
 

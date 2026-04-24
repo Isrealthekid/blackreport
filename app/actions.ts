@@ -789,6 +789,60 @@ export async function deleteMissionAction(formData: FormData) {
   redirect("/missions");
 }
 
+// Submit a mission through chain-of-command (server-side server action,
+// replaces the older /api/mission-submit route handler).
+export async function submitMissionAction(formData: FormData) {
+  const id = String(formData.get("id"));
+  await api(`/missions/${id}/submit`, { method: "POST" });
+  revalidatePath(`/missions/${id}`);
+  revalidatePath("/missions");
+  revalidatePath("/mission-approvals");
+  redirect(`/missions/${id}?submitted=1`);
+}
+
+// Approver action on a mission. Body: { action, comment? }.
+export async function actOnMissionAction(formData: FormData) {
+  const id = String(formData.get("id"));
+  const decision = String(formData.get("decision"));
+  const comment = String(formData.get("comment") ?? "").trim() || undefined;
+  const action =
+    decision === "revise"
+      ? "request_changes"
+      : decision; // approve | reject | request_changes | escalate
+  try {
+    await api(`/missions/${id}/act`, { method: "POST", body: { action, comment } });
+  } catch (e) {
+    if (e instanceof ApiError) {
+      revalidatePath(`/missions/${id}`);
+      redirect(`/missions/${id}?act_error=${encodeURIComponent(e.message)}`);
+    }
+    throw e;
+  }
+  revalidatePath(`/missions/${id}`);
+  revalidatePath("/missions");
+  revalidatePath("/mission-approvals");
+  if (action === "approve") redirect(`/missions/${id}?approved=1`);
+  if (action === "reject") redirect(`/missions/${id}?rejected=1`);
+  redirect(`/missions/${id}`);
+}
+
+// Attach a chain template to a camp (admin only). Empty selection unassigns
+// is not supported by the backend yet — pass a chain_template_id.
+export async function assignCampChainAction(formData: FormData) {
+  const campId = String(formData.get("camp_id"));
+  const chainId = String(formData.get("chain_template_id") ?? "").trim();
+  if (!chainId) {
+    revalidatePath(`/camps/${campId}`);
+    return;
+  }
+  await api(`/camps/${campId}/chain`, {
+    method: "POST",
+    body: { chain_template_id: chainId },
+  });
+  revalidatePath(`/camps/${campId}`);
+  revalidatePath("/camps");
+}
+
 // ──────────── SAC 16 ────────────
 
 export async function saveSAC16Action(formData: FormData) {

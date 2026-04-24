@@ -31,11 +31,11 @@ export async function POST(req: Request) {
     }
   }
 
-  // Submit the mission.
-  const res = await fetch(`${BASE}/api/v1/missions/${missionId}`, {
-    method: "PATCH",
+  // Submit through the chain-of-command (POST /missions/:id/submit).
+  // Backend auto-approves if no chain is attached to the camp.
+  const res = await fetch(`${BASE}/api/v1/missions/${missionId}/submit`, {
+    method: "POST",
     headers,
-    body: JSON.stringify({ status: "submitted" }),
   });
 
   if (!res.ok) {
