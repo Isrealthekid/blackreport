@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser, getOrganisation } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import type { AuditEntry, Camp, Mission, User } from "@/lib/types";
 import PrintButton from "./PrintButton";
 import MissionMap from "@/components/MissionMap";
@@ -34,14 +35,15 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
   ]);
   if (!mission) notFound();
 
-  const [camp, sac16, sac17, sac18, users, audit] = await Promise.all([
+  const [camp, sac16, sac17, sac18, usersRaw, audit] = await Promise.all([
     apiMaybe<Camp>(`/camps/${mission.camp_id}`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac16`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac17`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac18`),
-    apiMaybe<User[]>("/users"),
+    apiMaybe<unknown>("/users?limit=200"),
     apiMaybe<AuditEntry[]>(`/missions/${id}/approvals`),
   ]);
+  const users: User[] = extractItems<User>(usersRaw);
 
   const approvalEntry =
     mission.status === "approved"

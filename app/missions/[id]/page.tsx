@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import {
   actOnMissionAction,
@@ -78,7 +78,7 @@ export default async function MissionDetail({
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac18`),
     apiMaybe<unknown>(`/missions/${id}/approvals`),
     mission.chain_template_id
-      ? apiMaybe<ChainTemplate>(`/chains/${mission.chain_template_id}`)
+      ? apiOptional<ChainTemplate>(`/chains/${mission.chain_template_id}`)
       : Promise.resolve(null),
   ]);
   const approvals = extractItems<MissionApprovalEntry>(approvalsRaw);

@@ -1,4 +1,5 @@
 import { apiMaybe } from "./api";
+import { extractItems } from "./api-helpers";
 import type { Camp, Department, DepartmentMember, User } from "./types";
 
 /**
@@ -25,7 +26,7 @@ export async function getUserDepartments(user: User): Promise<Department[]> {
  * Admins see all camps.
  */
 export async function getUserCamps(user: User): Promise<Camp[]> {
-  const all = (await apiMaybe<Camp[]>("/camps")) ?? [];
+  const all = extractItems<Camp>(await apiMaybe<unknown>("/camps?limit=200"));
   if (user.is_admin) return all;
 
   const checks = await Promise.all(

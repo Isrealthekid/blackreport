@@ -244,9 +244,9 @@ export default async function DashboardPage() {
   if (isCamper) {
     let allCampMissions: Mission[] = [];
     const results = await Promise.all(
-      myCamps.map((c) => apiMaybe<Mission[]>(`/missions?camp_id=${c.id}`)),
+      myCamps.map((c) => apiMaybe<unknown>(`/missions?camp_id=${c.id}&limit=200`)),
     );
-    allCampMissions = results.flatMap((r) => r ?? []);
+    allCampMissions = results.flatMap((r) => extractItems<Mission>(r));
 
     const myMissions = user.is_admin
       ? allCampMissions

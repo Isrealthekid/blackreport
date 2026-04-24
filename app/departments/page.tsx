@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import {
   createDepartmentAction,
   toggleArchiveDepartmentAction,
@@ -65,12 +66,13 @@ function Node({
 
 export default async function DepartmentsPage() {
   await requireAdmin();
-  const [departments, users, templates] = await Promise.all([
+  const [departments, usersRaw, templates] = await Promise.all([
     apiMaybe<Department[]>("/departments"),
-    apiMaybe<User[]>("/users"),
+    apiMaybe<unknown>("/users?limit=200"),
     apiMaybe<ReportTemplate[]>("/templates"),
   ]);
   const all = departments ?? [];
+  const users = extractItems<User>(usersRaw);
   const roots = tree(all, null);
   const publishedTemplates = (templates ?? []).filter((t) => t.is_published);
 
@@ -151,7 +153,7 @@ export default async function DepartmentsPage() {
                   className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2"
                 >
                   <option value="">None — assign later</option>
-                  {(users ?? []).map((u) => (
+                  {users.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.full_name} ({u.email})
                     </option>

@@ -2,6 +2,7 @@
 // Used by both the single-mission print page and the per-camp bulk-print page.
 
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import type { AuditEntry, Camp, Mission, User } from "@/lib/types";
 import MissionMap from "@/components/MissionMap";
 
@@ -41,14 +42,15 @@ export default async function MissionPrintBlock({
     );
   }
 
-  const [camp, sac16, sac17, sac18, users, audit] = await Promise.all([
+  const [camp, sac16, sac17, sac18, usersRaw, audit] = await Promise.all([
     apiMaybe<Camp>(`/camps/${mission.camp_id}`),
     apiMaybe<Record<string, unknown>>(`/missions/${missionId}/sac16`),
     apiMaybe<Record<string, unknown>>(`/missions/${missionId}/sac17`),
     apiMaybe<Record<string, unknown>>(`/missions/${missionId}/sac18`),
-    apiMaybe<User[]>("/users"),
+    apiMaybe<unknown>("/users?limit=200"),
     apiMaybe<AuditEntry[]>(`/missions/${missionId}/approvals`),
   ]);
+  const users = extractItems<User>(usersRaw);
 
   const approvalEntry =
     mission.status === "approved"

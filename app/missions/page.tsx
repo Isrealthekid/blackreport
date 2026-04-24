@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import { getUserCamps } from "@/lib/scope";
 import type { Camp, ChainTemplate, Mission, User } from "@/lib/types";
@@ -37,10 +37,12 @@ export default async function MissionsPage({
   const sp = await searchParams;
   const myCamps = await getUserCamps(user);
 
-  const [allMissions, allUsers] = await Promise.all([
-    apiMaybe<Mission[]>("/missions").then((m) => m ?? []),
-    apiMaybe<User[]>("/users").then((u) => u ?? []),
+  const [missionsRaw, usersRaw] = await Promise.all([
+    apiOptional<unknown>("/missions?limit=200"),
+    apiOptional<unknown>("/users?limit=200"),
   ]);
+  const allMissions = extractItems<Mission>(missionsRaw);
+  const allUsers = extractItems<User>(usersRaw);
 
   // Pull camp detail for every camp referenced — list endpoint doesn't include members.
   const referencedCampIds = Array.from(
@@ -86,7 +88,7 @@ export default async function MissionsPage({
     ),
   );
   const chainDetails = await Promise.all(
-    chainIds.map((id) => apiMaybe<ChainTemplate>(`/chains/${id}`)),
+    chainIds.map((id) => apiOptional<ChainTemplate>(`/chains/${id}`)),
   );
   const chainMap = new Map<string, ChainTemplate>();
   for (const c of chainDetails) if (c) chainMap.set(c.id, c);
