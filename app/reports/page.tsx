@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import type { Department, DepartmentMember, Report, User } from "@/lib/types";
+import ReportsTable from "@/components/ReportsTable";
 
 const statusColors: Record<string, string> = {
   draft: "bg-neutral-700 text-neutral-200",
@@ -38,16 +39,8 @@ function rolesBelow(role: string): string[] {
     .map(([name]) => name);
 }
 
-export default async function ReportsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    status?: string;
-    department_id?: string;
-  }>;
-}) {
+export default async function ReportsPage() {
   const user = await requireUser();
-  const sp = await searchParams;
   const isAdmin = user.is_admin;
 
   // ── Fetch org data ──
@@ -60,29 +53,28 @@ export default async function ReportsPage({
 
   // ── Admin: sees everything ──
   if (isAdmin) {
-    const params = new URLSearchParams();
-    if (sp.status) params.set("status", sp.status);
-    if (sp.department_id) params.set("department_id", sp.department_id);
-    params.set("limit", "200");
-
-    const raw = await apiMaybe<unknown>(`/reports?${params}`);
+    const raw = await apiMaybe<unknown>("/reports?limit=500");
     const reports = extractItems<Report>(raw);
     const sorted = [...reports].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
     const deptMap = new Map(allDepts.map((d) => [d.id, d]));
     const userMap = new Map(allUsers.map((u) => [u.id, u]));
 
+    const deptRecord: Record<string, { name: string }> = {};
+    for (const [id, d] of deptMap) deptRecord[id] = { name: d.name };
+    const userRecord: Record<string, { full_name: string }> = {};
+    for (const [id, u] of userMap) userRecord[id] = { full_name: u.full_name };
+
     return (
       <Page
         title="All Reports"
         subtitle={`Showing ${sorted.length} reports across the organisation.`}
         reports={sorted}
-        deptMap={deptMap}
-        userMap={userMap}
+        deptRecord={deptRecord}
+        userRecord={userRecord}
         showReporterCol
         showDeptCol
         departments={allDepts}
-        sp={sp}
       />
     );
   }
@@ -122,8 +114,7 @@ export default async function ReportsPage({
     // Fetch reports for this department.
     const params = new URLSearchParams();
     params.set("department_id", dept.id);
-    if (sp.status) params.set("status", sp.status);
-    params.set("limit", "200");
+    params.set("limit", "500");
     const raw = await apiMaybe<unknown>(`/reports?${params}`);
     const deptReports = extractItems<Report>(raw);
 
@@ -148,7 +139,6 @@ export default async function ReportsPage({
 
   const sorted = visibleReports.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-  // Build user lookup from membership data.
   const userMap = new Map<string, { full_name: string }>();
   for (const { members } of myMemberships) {
     for (const m of members) {
@@ -158,6 +148,11 @@ export default async function ReportsPage({
     }
   }
   const deptMap = new Map(allDepts.map((d) => [d.id, d]));
+
+  const deptRecord: Record<string, { name: string }> = {};
+  for (const [id, d] of deptMap) deptRecord[id] = { name: d.name };
+  const userRecord: Record<string, { full_name: string }> = {};
+  for (const [id, u] of userMap) userRecord[id] = { full_name: u.full_name };
 
   const myDeptIds = myMemberships.map((m) => m.dept.id);
   const highestRole = myMemberships.reduce(
@@ -183,41 +178,36 @@ export default async function ReportsPage({
           : `Reports from roles below you in ${myMemberships.map((m) => m.dept.name).join(", ")} + your own.`
       }
       reports={sorted}
-      deptMap={deptMap}
-      userMap={userMap as Map<string, User>}
+      deptRecord={deptRecord}
+      userRecord={userRecord}
       showReporterCol={!isViewer}
       showDeptCol={myDeptIds.length > 1}
       departments={allDepts.filter((d) => myDeptIds.includes(d.id))}
-      sp={sp}
     />
   );
 }
 
-// ── Shared table component ──
+// ── Shared page wrapper ──
 
 function Page({
   title,
   subtitle,
   reports,
-  deptMap,
-  userMap,
+  deptRecord,
+  userRecord,
   showReporterCol,
   showDeptCol,
   departments,
-  sp,
 }: {
   title: string;
   subtitle?: string;
   reports: Report[];
-  deptMap: Map<string, Department>;
-  userMap: Map<string, { full_name: string }>;
+  deptRecord: Record<string, { name: string }>;
+  userRecord: Record<string, { full_name: string }>;
   showReporterCol: boolean;
   showDeptCol: boolean;
   departments: Department[];
-  sp: { status?: string; department_id?: string };
 }) {
-  const cols = 4 + (showReporterCol ? 1 : 0) + (showDeptCol ? 1 : 0);
-
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -228,82 +218,15 @@ function Page({
       </div>
       {subtitle && <p className="text-xs text-neutral-500 mt-1">{subtitle}</p>}
 
-      <form method="GET" className="mt-4 flex gap-2 flex-wrap">
-        <select name="status" defaultValue={sp.status ?? ""} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm">
-          <option value="">All statuses</option>
-          {["draft", "pending", "approved", "rejected", "revision_requested", "escalated", "recalled"].map((s) => (
-            <option key={s} value={s}>{statusLabels[s] ?? s.replace("_", " ")}</option>
-          ))}
-        </select>
-        {showDeptCol && (
-          <select name="department_id" defaultValue={sp.department_id ?? ""} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm">
-            <option value="">All departments</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        )}
-        <button className="text-xs px-3 py-2 border border-neutral-700 rounded">Filter</button>
-      </form>
-
-      <div className="mt-6 border border-neutral-800 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-900 text-neutral-400">
-            <tr>
-              <th className="text-left px-4 py-2">ID</th>
-              {showReporterCol && <th className="text-left px-4 py-2">Reporter</th>}
-              {showDeptCol && <th className="text-left px-4 py-2">Department</th>}
-              <th className="text-left px-4 py-2">Status</th>
-              <th className="text-left px-4 py-2">Submitted</th>
-              <th className="text-left px-4 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.length === 0 && (
-              <tr><td colSpan={cols} className="text-center py-10 text-neutral-500">No reports found.</td></tr>
-            )}
-            {reports.map((r) => {
-              const reporter =
-                userMap.get(r.reporter_id)?.full_name ??
-                (r.data?.name ? String(r.data.name) : r.reporter_id.slice(0, 8));
-              const dept = deptMap.get(r.department_id)?.name ?? "—";
-              return (
-                <tr key={r.id} className="border-t border-neutral-800 hover:bg-neutral-900">
-                  <td className="px-4 py-2">
-                    <Link href={`/reports/${r.id}`} className="hover:underline font-mono text-xs">{r.id.slice(0, 8)}</Link>
-                  </td>
-                  {showReporterCol && <td className="px-4 py-2 text-neutral-300">{reporter}</td>}
-                  {showDeptCol && <td className="px-4 py-2 text-neutral-400">{dept}</td>}
-                  <td className="px-4 py-2">
-                    <span className={`text-xs px-2 py-0.5 rounded ${statusColors[r.status] ?? "bg-neutral-800"}`}>
-                      {statusLabels[r.status] ?? r.status.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-neutral-400">
-                    {r.submitted_at ? new Date(r.submitted_at).toLocaleString() : "—"}
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/reports/${r.id}`}
-                        className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
-                      >
-                        View
-                      </Link>
-                      <Link
-                        href={`/reports/${r.id}/print`}
-                        target="_blank"
-                        className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
-                      >
-                        Print
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="mt-6">
+        <ReportsTable
+          reports={reports}
+          deptRecord={deptRecord}
+          userRecord={userRecord}
+          departments={departments}
+          showReporterCol={showReporterCol}
+          showDeptCol={showDeptCol}
+        />
       </div>
     </div>
   );

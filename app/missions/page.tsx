@@ -4,6 +4,7 @@ import { apiMaybe } from "@/lib/api";
 import { getUserCamps } from "@/lib/scope";
 import { createMissionAction } from "@/app/actions";
 import type { Camp, Mission, User } from "@/lib/types";
+import MissionsTable from "@/components/MissionsTable";
 
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString("en-GB", {
@@ -25,17 +26,11 @@ const statusColors: Record<string, string> = {
   rejected: "bg-red-900 text-red-200",
 };
 
-export default async function MissionsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ camp_id?: string; new?: string }>;
-}) {
+export default async function MissionsPage() {
   const user = await requireUser();
-  const sp = await searchParams;
   const myCamps = await getUserCamps(user);
-  const qs = sp.camp_id ? `?camp_id=${sp.camp_id}` : "";
   const [allMissions, allUsers] = await Promise.all([
-    apiMaybe<Mission[]>(`/missions${qs}`).then((m) => m ?? []),
+    apiMaybe<Mission[]>("/missions").then((m) => m ?? []),
     apiMaybe<User[]>("/users").then((u) => u ?? []),
   ]);
 
@@ -59,6 +54,18 @@ export default async function MissionsPage({
     for (const m of c.members ?? []) if (!userMap.has(m.user_id)) userMap.set(m.user_id, m.full_name);
   if (!userMap.has(user.id)) userMap.set(user.id, user.full_name);
 
+  // Build plain-object records for the client component (Maps aren't serialisable).
+  const campRecord: Record<string, { site_name: string }> = {};
+  for (const [id, c] of campMap) campRecord[id] = { site_name: c.site_name };
+
+  const userNameRecord: Record<string, string> = {};
+  for (const [id, name] of userMap) userNameRecord[id] = name;
+
+  const allCampsForFilter = Array.from(campMap.values()).map((c) => ({
+    id: c.id,
+    site_name: c.site_name,
+  }));
+
   // For any reporter_id we still can't resolve, fetch the user by id.
   const unresolvedReporterIds = Array.from(
     new Set(
@@ -71,13 +78,11 @@ export default async function MissionsPage({
     const fetched = await Promise.all(
       unresolvedReporterIds.map((id) => apiMaybe<User>(`/users/${id}`)),
     );
-    for (const u of fetched) if (u) userMap.set(u.id, u.full_name);
+    for (const u of fetched) if (u) {
+      userMap.set(u.id, u.full_name);
+      userNameRecord[u.id] = u.full_name;
+    }
   }
-
-  const userNameFor = (m: Mission): string => {
-    if (!m.reporter_id) return "—";
-    return userMap.get(m.reporter_id) ?? m.reporter_id.slice(0, 8);
-  };
 
   // Determine user's camp role.
   const isAdmin = user.is_admin;
@@ -203,24 +208,10 @@ export default async function MissionsPage({
         )}
       </div>
 
-      {/* ── Filter ── */}
-      {myCamps.length > 1 && (
-        <form method="GET" className="mt-4 flex gap-2">
-          <select name="camp_id" defaultValue={sp.camp_id ?? ""} className="bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm">
-            <option value="">All camps</option>
-            {myCamps.map((c) => (
-              <option key={c.id} value={c.id}>{c.site_name}</option>
-            ))}
-          </select>
-          <button className="text-xs px-3 py-2 border border-neutral-700 rounded">Filter</button>
-        </form>
-      )}
-
       {/* ── My Missions ── */}
       <section className="mt-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">My Missions</h2>
-          <span className="text-xs text-neutral-500">{myMissions.length} total</span>
         </div>
         <p className="text-xs text-neutral-500 mb-3">
           Missions you created or filled. Drafts can be continued from here.
@@ -230,77 +221,15 @@ export default async function MissionsPage({
             You haven&apos;t created any missions yet. Use the form above to start one.
           </div>
         ) : (
-          <div className="border border-neutral-800 rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-900 text-neutral-400">
-                <tr>
-                  <th className="text-left px-4 py-2">Mission #</th>
-                  <th className="text-left px-4 py-2">Camp</th>
-                  <th className="text-left px-4 py-2">Created</th>
-                  <th className="text-left px-4 py-2">Status</th>
-                  <th className="text-left px-4 py-2">SAC Forms</th>
-                  <th className="text-left px-4 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myMissions.map((m) => {
-                  const camp = campMap.get(m.camp_id);
-                  const isDraft = m.status === "draft";
-                  return (
-                    <tr key={m.id} className="border-t border-neutral-800 hover:bg-neutral-900">
-                      <td className="px-4 py-2">
-                        <Link href={`/missions/${m.id}`} className="hover:underline font-mono font-medium">
-                          {m.mission_number}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2 text-neutral-400">{camp?.site_name ?? "—"}</td>
-                      <td className="px-4 py-2 text-neutral-400">{fmtDateTime(m.created_at)}</td>
-                      <td className="px-4 py-2">
-                        <span className={`text-xs px-2 py-0.5 rounded ${statusColors[m.status] ?? "bg-neutral-800"}`}>
-                          {statusLabels[m.status] ?? m.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex gap-2 text-xs">
-                          <span className={m.has_sac16 ? "text-green-400" : "text-neutral-600"}>16{m.has_sac16 ? "✓" : ""}</span>
-                          <span className={m.has_sac17 ? "text-green-400" : "text-neutral-600"}>17{m.has_sac17 ? "✓" : ""}</span>
-                          <span className={m.has_sac18 ? "text-green-400" : "text-neutral-600"}>18{m.has_sac18 ? "✓" : ""}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex gap-2">
-                          {isDraft ? (
-                            <Link
-                              href={`/missions/${m.id}`}
-                              className="text-xs px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium"
-                            >
-                              Continue filling →
-                            </Link>
-                          ) : (
-                            <>
-                              <Link
-                                href={`/missions/${m.id}`}
-                                className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
-                              >
-                                View
-                              </Link>
-                              <Link
-                                href={`/missions/${m.id}/print`}
-                                target="_blank"
-                                className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
-                              >
-                                Print
-                              </Link>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <MissionsTable
+            missions={myMissions}
+            campRecord={campRecord}
+            userNameRecord={userNameRecord}
+            camps={allCampsForFilter}
+            currentUserId={user.id}
+            showUserCol={false}
+            draftCta="continue"
+          />
         )}
       </section>
 
@@ -308,90 +237,15 @@ export default async function MissionsPage({
       {!isCamperOnly && (
       <>
       <h2 className="text-lg font-semibold mt-8 mb-2">All Missions</h2>
-
-      {/* ── Mission list ── */}
-      <div className="mt-6 border border-neutral-800 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-900 text-neutral-400">
-            <tr>
-              <th className="text-left px-4 py-2">Mission #</th>
-              <th className="text-left px-4 py-2">Camp</th>
-              <th className="text-left px-4 py-2">User</th>
-              <th className="text-left px-4 py-2">Created</th>
-              <th className="text-left px-4 py-2">Status</th>
-              <th className="text-left px-4 py-2">SAC Forms</th>
-              <th className="text-left px-4 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.length === 0 && (
-              <tr>
-                <td colSpan={7} className="text-center py-10 text-neutral-500">
-                  No missions yet. Create one above to get started.
-                </td>
-              </tr>
-            )}
-            {sorted.map((m) => {
-              const camp = campMap.get(m.camp_id);
-              return (
-                <tr key={m.id} className="border-t border-neutral-800 hover:bg-neutral-900">
-                  <td className="px-4 py-2">
-                    <Link href={`/missions/${m.id}`} className="hover:underline font-mono font-medium">
-                      {m.mission_number}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-neutral-400">{camp?.site_name ?? "—"}</td>
-                  <td className="px-4 py-2 text-neutral-400">{userNameFor(m)}</td>
-                  <td className="px-4 py-2 text-neutral-400">{fmtDateTime(m.created_at)}</td>
-                  <td className="px-4 py-2">
-                    <span className={`text-xs px-2 py-0.5 rounded ${statusColors[m.status] ?? "bg-neutral-800"}`}>
-                      {statusLabels[m.status] ?? m.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex gap-2 text-xs">
-                      <span className={m.has_sac16 ? "text-green-400" : "text-neutral-600"}>
-                        16{m.has_sac16 ? "✓" : ""}
-                      </span>
-                      <span className={m.has_sac17 ? "text-green-400" : "text-neutral-600"}>
-                        17{m.has_sac17 ? "✓" : ""}
-                      </span>
-                      <span className={m.has_sac18 ? "text-green-400" : "text-neutral-600"}>
-                        18{m.has_sac18 ? "✓" : ""}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/missions/${m.id}`}
-                        className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
-                      >
-                        View
-                      </Link>
-                      <Link
-                        href={`/missions/${m.id}/print`}
-                        target="_blank"
-                        className="text-xs px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800"
-                      >
-                        Print
-                      </Link>
-                      {m.status === "draft" && m.reporter_id === user.id && (
-                        <Link
-                          href={`/missions/${m.id}`}
-                          className="text-xs px-2 py-1 border border-indigo-700 text-indigo-300 rounded hover:bg-indigo-950"
-                        >
-                          Fill forms
-                        </Link>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <MissionsTable
+        missions={sorted}
+        campRecord={campRecord}
+        userNameRecord={userNameRecord}
+        camps={allCampsForFilter}
+        currentUserId={user.id}
+        showUserCol
+        draftCta="fill-forms"
+      />
       </>
       )}
     </div>

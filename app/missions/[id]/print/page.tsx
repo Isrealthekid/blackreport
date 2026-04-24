@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser, getOrganisation } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
-import type { Camp, Mission, User } from "@/lib/types";
+import type { AuditEntry, Camp, Mission, User } from "@/lib/types";
 import PrintButton from "./PrintButton";
 import MissionMap from "@/components/MissionMap";
 
@@ -34,13 +34,25 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
   ]);
   if (!mission) notFound();
 
-  const [camp, sac16, sac17, sac18, users] = await Promise.all([
+  const [camp, sac16, sac17, sac18, users, audit] = await Promise.all([
     apiMaybe<Camp>(`/camps/${mission.camp_id}`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac16`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac17`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac18`),
     apiMaybe<User[]>("/users"),
+    apiMaybe<AuditEntry[]>(`/missions/${id}/approvals`),
   ]);
+
+  const approvalEntry =
+    mission.status === "approved"
+      ? [...(audit ?? [])]
+          .filter((a) => a.action === "approve" || a.action === "auto_approve")
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          )[0] ?? null
+      : null;
 
   const userMap = new Map<string, string>();
   for (const u of users ?? []) userMap.set(u.id, u.full_name);
@@ -58,19 +70,22 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
     ? userMap.get(mission.reporter_id) ?? mission.reporter_id.slice(0, 8)
     : "—";
 
-  let approverName: string | null = mission.approved_by_name ?? null;
-  if (!approverName && mission.approved_by) {
-    approverName = userMap.get(mission.approved_by) ?? null;
+  let approverName: string | null =
+    mission.approved_by_name ?? approvalEntry?.actor_name ?? null;
+  const approverId = mission.approved_by ?? approvalEntry?.actor_id ?? null;
+  if (!approverName && approverId) {
+    approverName = userMap.get(approverId) ?? null;
     if (!approverName) {
-      const approver = await apiMaybe<User>(`/users/${mission.approved_by}`);
+      const approver = await apiMaybe<User>(`/users/${approverId}`);
       if (approver) {
         userMap.set(approver.id, approver.full_name);
         approverName = approver.full_name;
       }
     }
   }
-  const approvedAtLabel = mission.approved_at
-    ? new Date(mission.approved_at).toLocaleString("en-GB", {
+  const approvedAtIso = mission.approved_at ?? approvalEntry?.created_at ?? null;
+  const approvedAtLabel = approvedAtIso
+    ? new Date(approvedAtIso).toLocaleString("en-GB", {
         day: "2-digit", month: "short", year: "numeric",
         hour: "2-digit", minute: "2-digit",
       })
@@ -121,9 +136,9 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
         <div className="text-sm text-neutral-700">
           {camp?.site_name} · {missionDateLabel} · Status: {mission.status}
         </div>
-        {mission.status === "approved" && approverName && (
+        {mission.status === "approved" && (approverName || approvedAtLabel) && (
           <div className="text-sm text-neutral-700 mt-1">
-            Approved by: {approverName}
+            Approved by: {approverName ?? "—"}
             {approvedAtLabel ? ` · ${approvedAtLabel}` : ""}
           </div>
         )}
@@ -361,6 +376,18 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
           <Field label="Supervisor Signed At" val={fmtUTC(sac18.supervisor_signed_at)} />
           <Field label="Post-flight RP Signed At" val={fmtUTC(sac18.post_rp_signed_at)} />
           <Field label="Post-flight Supervisor Signed At" val={fmtUTC(sac18.post_supervisor_signed_at)} />
+        </section>
+      )}
+
+      {/* ════════ Approval ════════ */}
+      {mission.status === "approved" && (approverName || approvedAtLabel) && (
+        <section className="mb-8">
+          <h2 className="text-lg font-bold border-b border-neutral-300 pb-1 mb-3">Approval</h2>
+          <Field label="Approved by" val={approverName} />
+          <Field label="Approved date" val={approvedAtLabel} />
+          {approvalEntry?.comment ? (
+            <Field label="Comment" val={approvalEntry.comment} />
+          ) : null}
         </section>
       )}
 
