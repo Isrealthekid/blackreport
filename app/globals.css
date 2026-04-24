@@ -1,14 +1,145 @@
 @import "tailwindcss";
 
+/* ===========================================================
+   Theme tokens.
+   Default = dark. `[data-theme="light"]` flips them.
+   =========================================================== */
+
 :root {
-  --bg: #0a0a0a;
-  --fg: #f5f5f5;
+  --bg:            #0a0a0a;
+  --surface:       #0a0a0a;       /* same as bg by default */
+  --surface-2:     #171717;       /* "card" / panel */
+  --surface-3:     #262626;
+  --fg:            #f5f5f5;
+  --fg-muted:      #a3a3a3;
+  --fg-faint:      #737373;
+  --border:        #262626;
+  --border-strong: #404040;
+  --hover:         #1f1f1f;
+  --accent:        #ffffff;       /* primary button bg */
+  --accent-fg:     #0a0a0a;       /* primary button text */
+}
+
+[data-theme="light"] {
+  --bg:            #fafafa;
+  --surface:       #ffffff;
+  --surface-2:     #ffffff;
+  --surface-3:     #f5f5f5;
+  --fg:            #0a0a0a;
+  --fg-muted:      #525252;
+  --fg-faint:      #737373;
+  --border:        #e5e5e5;
+  --border-strong: #d4d4d4;
+  --hover:         #f5f5f5;
+  --accent:        #0a0a0a;
+  --accent-fg:     #ffffff;
 }
 
 html, body {
   background: var(--bg);
   color: var(--fg);
   min-height: 100%;
+  font-family: "Google Sans", "Google Sans Text", "Product Sans",
+               var(--font-inter, "Inter"), system-ui, -apple-system,
+               BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+               Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* ===========================================================
+   Light-mode overrides for the Tailwind neutral utility colors
+   that the existing dark-themed components hardcode. We use
+   :where() to keep specificity at 0 so component-level
+   overrides still win.
+   =========================================================== */
+
+[data-theme="light"] :where(body, html)               { color-scheme: light; }
+
+[data-theme="light"] :where(.bg-black)                { background-color: #ffffff; }
+[data-theme="light"] :where(.bg-neutral-950)          { background-color: var(--bg); }
+[data-theme="light"] :where(.bg-neutral-900)          { background-color: var(--surface-2); }
+[data-theme="light"] :where(.bg-neutral-800)          { background-color: var(--surface-3); }
+[data-theme="light"] :where(.bg-neutral-700)          { background-color: #d4d4d4; }
+[data-theme="light"] :where(.hover\:bg-neutral-900:hover) { background-color: #f5f5f5; }
+[data-theme="light"] :where(.hover\:bg-neutral-800:hover) { background-color: #ebebeb; }
+
+/* `text-white` only flips to dark when it sits on one of our neutral
+ * surfaces (sidebar, nav, panels). On saturated coloured buttons
+ * (`bg-indigo-600 text-white`, etc.) it stays white. */
+[data-theme="light"] :where(
+  .bg-neutral-950.text-white,
+  .bg-neutral-900.text-white,
+  .bg-neutral-800.text-white,
+  .bg-neutral-700.text-white
+) { color: var(--fg); }
+[data-theme="light"] :where(
+  .hover\:bg-neutral-900.hover\:text-white:hover,
+  .hover\:bg-neutral-800.hover\:text-white:hover
+) { color: var(--fg); }
+
+[data-theme="light"] :where(.text-neutral-200)        { color: #1f1f1f; }
+[data-theme="light"] :where(.text-neutral-300)        { color: #404040; }
+[data-theme="light"] :where(.text-neutral-400)        { color: var(--fg-muted); }
+[data-theme="light"] :where(.text-neutral-500)        { color: var(--fg-faint); }
+[data-theme="light"] :where(.text-neutral-600)        { color: #737373; }
+
+[data-theme="light"] :where(.border-neutral-700)      { border-color: var(--border-strong); }
+[data-theme="light"] :where(.border-neutral-800)      { border-color: var(--border); }
+[data-theme="light"] :where(.border-neutral-900)      { border-color: var(--border); }
+[data-theme="light"] :where(.hover\:border-neutral-600:hover) { border-color: #a3a3a3; }
+[data-theme="light"] :where(.hover\:border-neutral-700:hover) { border-color: #a3a3a3; }
+[data-theme="light"] :where(.divide-neutral-800 > * + *) { border-color: var(--border); }
+
+/* "Primary" button: black-on-white in dark, but white-on-black in light. Flip it.
+ * NOTE: `.text-black` is intentionally NOT overridden here — without a paired
+ * `.bg-white` it should stay literal black. The compound rule below colours the
+ * primary button, and lower-specificity blanket rules can't undo it. */
+[data-theme="light"] :where(.bg-white)                       { background-color: var(--accent); color: var(--accent-fg); }
+[data-theme="light"] :where(.bg-white.text-black)            { background-color: var(--accent); color: var(--accent-fg); }
+[data-theme="light"] :where(.bg-white .text-black)           { color: var(--accent-fg); }
+[data-theme="light"] :where(.hover\:bg-neutral-200:hover)    { background-color: #262626; color: var(--accent-fg); }
+
+/* Tinted alert/info panels — soften to readable shades on white */
+[data-theme="light"] :where(.bg-yellow-950\/30, .bg-yellow-950\/20) { background-color: #fef9c3; }
+[data-theme="light"] :where(.bg-green-950\/30,  .bg-green-950\/20)  { background-color: #dcfce7; }
+[data-theme="light"] :where(.bg-red-950\/30,    .bg-red-950\/20)    { background-color: #fee2e2; }
+[data-theme="light"] :where(.bg-indigo-950\/30, .bg-indigo-950\/20) { background-color: #e0e7ff; }
+[data-theme="light"] :where(.bg-yellow-900\/40, .bg-yellow-900\/30) { background-color: #fde68a; }
+[data-theme="light"] :where(.bg-green-900\/40,  .bg-green-900\/30)  { background-color: #bbf7d0; }
+[data-theme="light"] :where(.bg-red-900\/40)                         { background-color: #fecaca; }
+[data-theme="light"] :where(.bg-indigo-900\/40)                      { background-color: #c7d2fe; }
+[data-theme="light"] :where(.bg-yellow-900)         { background-color: #fde68a; color: #92400e; }
+[data-theme="light"] :where(.bg-green-900)          { background-color: #bbf7d0; color: #14532d; }
+[data-theme="light"] :where(.bg-red-900)            { background-color: #fecaca; color: #7f1d1d; }
+[data-theme="light"] :where(.bg-indigo-900)        { background-color: #c7d2fe; color: #312e81; }
+[data-theme="light"] :where(.text-yellow-200)      { color: #92400e; }
+[data-theme="light"] :where(.text-yellow-300)      { color: #b45309; }
+[data-theme="light"] :where(.text-green-200)       { color: #14532d; }
+[data-theme="light"] :where(.text-green-300)       { color: #166534; }
+[data-theme="light"] :where(.text-green-400)       { color: #15803d; }
+[data-theme="light"] :where(.text-red-200)         { color: #7f1d1d; }
+[data-theme="light"] :where(.text-red-300)         { color: #991b1b; }
+[data-theme="light"] :where(.text-red-400)         { color: #b91c1c; }
+[data-theme="light"] :where(.text-indigo-200)      { color: #3730a3; }
+[data-theme="light"] :where(.text-indigo-300)      { color: #4338ca; }
+[data-theme="light"] :where(.text-blue-400)        { color: #2563eb; }
+[data-theme="light"] :where(.border-yellow-800,
+                             .border-yellow-900)    { border-color: #fde68a; }
+[data-theme="light"] :where(.border-green-800,
+                             .border-green-900)     { border-color: #bbf7d0; }
+[data-theme="light"] :where(.border-red-800,
+                             .border-red-900)       { border-color: #fecaca; }
+[data-theme="light"] :where(.border-indigo-800,
+                             .border-indigo-900)    { border-color: #c7d2fe; }
+
+/* Inputs & form controls inherit the surface vars */
+[data-theme="light"] :where(input, select, textarea) {
+  background-color: #ffffff;
+  color: var(--fg);
+  border-color: var(--border-strong);
+}
+[data-theme="light"] :where(input::placeholder, textarea::placeholder) {
+  color: #a3a3a3;
 }
 
 /* Responsive tables — horizontal scroll on small screens */

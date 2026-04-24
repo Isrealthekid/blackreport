@@ -627,6 +627,7 @@ interface RawChainLevel {
 
 export async function createChainAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
+  const kind = String(formData.get("kind") ?? "department");
   const raw = String(formData.get("levels") ?? "[]");
   let levels: RawChainLevel[] = [];
   try {
@@ -641,9 +642,53 @@ export async function createChainAction(formData: FormData) {
     time_limit_hours: Number(l.time_limit_hours) || 24,
     escalation_action: l.escalation_action,
   }));
-  await api("/chains", { method: "POST", body: { name, levels: cleaned } });
+  await api("/chains", { method: "POST", body: { name, kind, levels: cleaned } });
   revalidatePath("/chains");
   redirect("/chains");
+}
+
+// Build + assign a mission-kind chain to a camp in one go.
+// Form fields: camp_id, name, plus repeated rows of level_*_role / *_resolution / *_time_limit / *_escalation.
+export async function createMissionChainForCampAction(formData: FormData) {
+  const campId = String(formData.get("camp_id"));
+  const name = String(formData.get("name") ?? "").trim();
+  if (!campId || !name) return;
+
+  // Levels are submitted as parallel arrays.
+  const roles = formData.getAll("level_role") as string[];
+  const resolutions = formData.getAll("level_resolution") as string[];
+  const timeLimits = formData.getAll("level_time_limit") as string[];
+  const escalations = formData.getAll("level_escalation") as string[];
+
+  const levels: ChainLevel[] = [];
+  for (let i = 0; i < roles.length && i < 5; i++) {
+    const role = (roles[i] ?? "").trim();
+    if (!role) continue;
+    levels.push({
+      level_index: levels.length + 1,
+      approver_role: role,
+      approver_user_ids: [],
+      resolution: (resolutions[i] === "all" ? "all" : "any"),
+      time_limit_hours: Number(timeLimits[i] || 48) || 48,
+      escalation_action:
+        escalations[i] === "auto_approve"
+          ? "auto_approve"
+          : escalations[i] === "notify_admin"
+          ? "notify_admin"
+          : "escalate",
+    });
+  }
+  if (levels.length === 0) return;
+
+  const created = await api<{ id: string }>("/chains", {
+    method: "POST",
+    body: { name, kind: "mission", levels },
+  });
+  await api(`/camps/${campId}/chain`, {
+    method: "POST",
+    body: { chain_template_id: created.id },
+  });
+  revalidatePath(`/camps/${campId}`);
 }
 
 export async function assignChainAction(formData: FormData) {
