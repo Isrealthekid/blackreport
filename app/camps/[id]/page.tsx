@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import {
   addCampMemberAction,
@@ -48,7 +48,7 @@ export default async function CampDetail({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const [camp, usersRaw, chainsRaw, missionsRaw, pastRaw] = await Promise.all([
     apiMaybe<Camp & { chain_template_id?: string | null; chain_template_name?: string | null }>(`/camps/${id}`),
-    apiMaybe<unknown>("/users?limit=200"),
+    apiOptional<unknown>("/users?limit=200"),
     user.is_admin ? apiMaybe<unknown>("/chains?kind=mission") : Promise.resolve(null),
     apiMaybe<unknown>(`/missions?camp_id=${id}`),
     apiMaybe<unknown>(`/camps/${id}/members/history`),

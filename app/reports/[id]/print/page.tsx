@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireUser, getOrganisation } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import type {
   AuditEntry,
@@ -45,7 +45,7 @@ export default async function PrintablePage({
   const [template, audit, usersRaw, departments] = await Promise.all([
     apiMaybe<ReportTemplate>(`/templates/${report!.template_id}`),
     apiMaybe<AuditEntry[]>(`/reports/${id}/audit`),
-    apiMaybe<unknown>("/users?limit=200"),
+    apiOptional<unknown>("/users?limit=200"),
     apiMaybe<Department[]>("/departments"),
   ]);
   const users = extractItems<User>(usersRaw);

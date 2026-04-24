@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import { actOnReportAction, recallReportAction } from "@/app/actions";
 import BackButton from "@/components/BackButton";
@@ -63,7 +63,7 @@ export default async function ReportDetail({
   const [template, audit, usersRaw, departments, deptMembers] = await Promise.all([
     apiMaybe<ReportTemplate>(`/templates/${report!.template_id}`),
     apiMaybe<AuditEntry[]>(`/reports/${id}/audit`),
-    apiMaybe<unknown>("/users?limit=200"),
+    apiOptional<unknown>("/users?limit=200"),
     apiMaybe<Department[]>("/departments"),
     report!.department_id
       ? apiMaybe<DepartmentMember[]>(`/departments/${report!.department_id}/members`)

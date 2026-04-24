@@ -73,7 +73,7 @@ export default async function MissionsPage({
   );
   if (unresolvedReporterIds.length > 0) {
     const fetched = await Promise.all(
-      unresolvedReporterIds.map((id) => apiMaybe<User>(`/users/${id}`)),
+      unresolvedReporterIds.map((id) => apiOptional<User>(`/users/${id}`)),
     );
     for (const u of fetched) if (u) userMap.set(u.id, u.full_name);
   }

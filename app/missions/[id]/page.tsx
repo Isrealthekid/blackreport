@@ -85,14 +85,14 @@ export default async function MissionDetail({
 
   let approverName: string | null = mission.approved_by_name ?? null;
   if (!approverName && mission.approved_by) {
-    const approver = await apiMaybe<User>(`/users/${mission.approved_by}`);
+    const approver = await apiOptional<User>(`/users/${mission.approved_by}`);
     approverName = approver?.full_name ?? null;
   }
   const approvedAtLabel = mission.approved_at ? fmtDateTime(mission.approved_at) : null;
 
   let rejecterName: string | null = null;
   if (mission.rejected_by) {
-    const rejecter = await apiMaybe<User>(`/users/${mission.rejected_by}`);
+    const rejecter = await apiOptional<User>(`/users/${mission.rejected_by}`);
     rejecterName = rejecter?.full_name ?? null;
   }
   const rejectedAtLabel = mission.rejected_at ? fmtDateTime(mission.rejected_at) : null;
