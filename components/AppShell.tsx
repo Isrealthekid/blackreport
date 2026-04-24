@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
+import type { Theme } from "@/app/theme-action";
+import ThemeToggle from "./ThemeToggle";
 
 export interface NavLink {
   href: string;
@@ -23,6 +25,7 @@ export default function AppShell({
   orgName,
   orgLogo,
   unreadNotifications,
+  theme,
   children,
 }: {
   links: NavLink[];
@@ -30,6 +33,7 @@ export default function AppShell({
   orgName: string;
   orgLogo: string;
   unreadNotifications: number;
+  theme: Theme;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false); // mobile drawer
@@ -170,6 +174,8 @@ export default function AppShell({
           </button>
 
           <div className="flex-1" />
+
+          <ThemeToggle initial={theme} />
 
           <Link
             href="/notifications"

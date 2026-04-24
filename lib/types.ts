@@ -171,9 +171,13 @@ export interface ChainLevel {
   escalation_action: "auto_approve" | "escalate" | "notify_admin";
 }
 
+export type ChainKind = "department" | "mission";
+
 export interface ChainTemplate {
   id: string;
   name: string;
+  /** Distinguishes report-flow chains (department) from drone-mission chains. */
+  kind?: ChainKind;
   levels?: ChainLevel[];
 }
 

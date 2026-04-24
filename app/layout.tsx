@@ -1,10 +1,22 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { cookies } from "next/headers";
+import { Inter } from "next/font/google";
 import { can, getCurrentUser, getOrganisation } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import AppShell, { type NavLink } from "@/components/AppShell";
 import type { Camp, Notification, User } from "@/lib/types";
+import type { Theme } from "@/app/theme-action";
+
+// Google Sans isn't on Google Fonts publicly — we layer it as the first
+// font-family preference (renders for users who have it locally) and load
+// Inter via next/font as the universal fallback.
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "Black Report",
@@ -18,9 +30,14 @@ export default async function RootLayout({
 }) {
   const user = await getCurrentUser();
 
+  // Read theme cookie up-front so the very first paint matches the user's
+  // preference (no flash). Default to dark.
+  const jar = await cookies();
+  const theme: Theme = jar.get("br_theme")?.value === "light" ? "light" : "dark";
+
   if (!user) {
     return (
-      <html lang="en">
+      <html lang="en" data-theme={theme} className={inter.variable}>
         <body className="antialiased">
           <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
         </body>
@@ -114,7 +131,7 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang={org?.locale ?? "en"}>
+    <html lang={org?.locale ?? "en"} data-theme={theme} className={inter.variable}>
       <body className="antialiased">
         <AppShell
           links={links}
@@ -122,6 +139,7 @@ export default async function RootLayout({
           orgName={orgName}
           orgLogo={orgLogo}
           unreadNotifications={unread}
+          theme={theme}
         >
           {children}
         </AppShell>

@@ -19,7 +19,7 @@ export default async function MissionApprovalsPage() {
   const [missionsRaw, campsRaw, chainsRaw] = await Promise.all([
     apiMaybe<unknown>("/missions"),
     apiMaybe<unknown>("/camps"),
-    apiMaybe<unknown>("/chains"),
+    apiMaybe<unknown>("/chains?kind=mission"),
   ]);
   const missions = extractItems<Mission>(missionsRaw).filter(
     (m) => m.status === "submitted",

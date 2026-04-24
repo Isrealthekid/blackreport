@@ -6,6 +6,7 @@ import { extractItems } from "@/lib/api-helpers";
 import {
   addCampMemberAction,
   assignCampChainAction,
+  createMissionChainForCampAction,
   deleteCampAction,
   removeCampMemberAction,
   updateCampAction,
@@ -48,7 +49,7 @@ export default async function CampDetail({ params }: { params: Promise<{ id: str
   const [camp, users, chainsRaw, missionsRaw, pastRaw] = await Promise.all([
     apiMaybe<Camp & { chain_template_id?: string | null; chain_template_name?: string | null }>(`/camps/${id}`),
     apiMaybe<User[]>("/users"),
-    user.is_admin ? apiMaybe<unknown>("/chains") : Promise.resolve(null),
+    user.is_admin ? apiMaybe<unknown>("/chains?kind=mission") : Promise.resolve(null),
     apiMaybe<unknown>(`/missions?camp_id=${id}`),
     apiMaybe<unknown>(`/camps/${id}/members/history`),
   ]);
@@ -95,9 +96,9 @@ export default async function CampDetail({ params }: { params: Promise<{ id: str
       {/* ── Mission approval chain ── */}
       <h2 className="text-lg font-semibold mt-10">Mission approval chain</h2>
       <p className="text-xs text-neutral-500 mt-1">
-        Reuses your organisation&apos;s chain templates. Mission submissions in this
-        camp follow this chain. Levels can name approvers explicitly or use the
-        camp role <code className="text-neutral-300">supervisor</code>.
+        Mission chains are kept separate from department-report chains. Pick from
+        existing mission chains, or create a new one below. Levels use the camp
+        role <code className="text-neutral-300">supervisor</code> by default.
       </p>
       {camp.chain_template_id ? (
         <div className="mt-3 border border-neutral-800 rounded-lg p-3 text-sm">
@@ -112,33 +113,118 @@ export default async function CampDetail({ params }: { params: Promise<{ id: str
         </p>
       )}
       {user.is_admin && (
-        <form action={assignCampChainAction} className="mt-3 flex flex-wrap gap-2 items-end max-w-xl">
-          <input type="hidden" name="camp_id" value={camp.id} />
-          <div className="flex-1 min-w-48">
-            <label className="text-xs text-neutral-400">
-              {camp.chain_template_id ? "Replace chain" : "Attach chain"}
-            </label>
-            <select
-              name="chain_template_id"
-              defaultValue={camp.chain_template_id ?? ""}
-              className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-sm"
+        <>
+          <form action={assignCampChainAction} className="mt-3 flex flex-wrap gap-2 items-end max-w-xl">
+            <input type="hidden" name="camp_id" value={camp.id} />
+            <div className="flex-1 min-w-48">
+              <label className="text-xs text-neutral-400">
+                {camp.chain_template_id ? "Replace chain" : "Attach existing mission chain"}
+              </label>
+              <select
+                name="chain_template_id"
+                defaultValue={camp.chain_template_id ?? ""}
+                className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-sm"
+              >
+                {chains.length === 0 && <option value="">No mission chains defined yet</option>}
+                {chains.length > 0 && <option value="">— select a chain —</option>}
+                {chains.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              disabled={chains.length === 0}
+              className="text-xs px-3 py-1.5 border border-neutral-700 rounded hover:bg-neutral-800 disabled:opacity-50"
             >
-              {chains.length === 0 && <option value="">No chains defined</option>}
-              {chains.length > 0 && <option value="">— select a chain —</option>}
-              {chains.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            disabled={chains.length === 0}
-            className="text-xs px-3 py-1.5 border border-neutral-700 rounded hover:bg-neutral-800 disabled:opacity-50"
-          >
-            Save
-          </button>
-        </form>
+              Save
+            </button>
+          </form>
+
+          <details className="mt-3 max-w-xl border border-neutral-800 rounded-lg">
+            <summary className="px-3 py-2 text-xs cursor-pointer hover:bg-neutral-900 text-neutral-300">
+              + Create a new mission chain
+            </summary>
+            <form action={createMissionChainForCampAction} className="p-3 space-y-3 border-t border-neutral-800">
+              <input type="hidden" name="camp_id" value={camp.id} />
+              <div>
+                <label className="text-xs text-neutral-400">Chain name</label>
+                <input
+                  name="name"
+                  required
+                  placeholder={`${camp.site_name} mission chain`}
+                  className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="grid grid-cols-4 gap-2 items-end">
+                    <div className="col-span-1">
+                      <label className="text-[10px] uppercase tracking-wider text-neutral-500">
+                        Level {i} role
+                      </label>
+                      <select
+                        name="level_role"
+                        defaultValue={i === 1 ? "supervisor" : ""}
+                        className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs"
+                      >
+                        <option value="">— skip —</option>
+                        <option value="supervisor">supervisor</option>
+                        <option value="camper">camper</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-neutral-500">
+                        Resolution
+                      </label>
+                      <select
+                        name="level_resolution"
+                        defaultValue="any"
+                        className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs"
+                      >
+                        <option value="any">any one</option>
+                        <option value="all">all required</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-neutral-500">
+                        Time limit (h)
+                      </label>
+                      <input
+                        name="level_time_limit"
+                        type="number"
+                        defaultValue={48}
+                        min={1}
+                        className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-neutral-500">
+                        On timeout
+                      </label>
+                      <select
+                        name="level_escalation"
+                        defaultValue="escalate"
+                        className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs"
+                      >
+                        <option value="escalate">escalate</option>
+                        <option value="auto_approve">auto-approve</option>
+                        <option value="notify_admin">notify admin</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-neutral-500">
+                Empty rows are skipped. Up to 3 levels here; use the API for more.
+              </p>
+              <button className="text-xs px-3 py-1.5 bg-white text-black rounded font-medium">
+                Create &amp; attach
+              </button>
+            </form>
+          </details>
+        </>
       )}
 
       <h2 className="text-lg font-semibold mt-10">Members ({members.length})</h2>
