@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import {
   addCampMemberAction,
@@ -46,14 +46,15 @@ const missionStatusColors: Record<string, string> = {
 export default async function CampDetail({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  const [camp, users, chainsRaw, missionsRaw, pastRaw] = await Promise.all([
+  const [camp, usersRaw, chainsRaw, missionsRaw, pastRaw] = await Promise.all([
     apiMaybe<Camp & { chain_template_id?: string | null; chain_template_name?: string | null }>(`/camps/${id}`),
-    apiMaybe<User[]>("/users"),
+    apiOptional<unknown>("/users?limit=200"),
     user.is_admin ? apiMaybe<unknown>("/chains?kind=mission") : Promise.resolve(null),
     apiMaybe<unknown>(`/missions?camp_id=${id}`),
     apiMaybe<unknown>(`/camps/${id}/members/history`),
   ]);
   if (!camp) notFound();
+  const users = extractItems<User>(usersRaw);
   const members = camp.members ?? [];
   const chains = extractItems<ChainTemplate>(chainsRaw);
   const currentChain = chains.find((c) => c.id === camp.chain_template_id);

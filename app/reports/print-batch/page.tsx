@@ -1,5 +1,5 @@
 import { requireUser, getOrganisation } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import type {
   Department,
@@ -78,7 +78,7 @@ export default async function PrintBatchPage({
 
   const [templatesRaw, usersRaw, deptsRaw] = await Promise.all([
     apiMaybe<unknown>("/templates"),
-    apiMaybe<unknown>("/users"),
+    apiOptional<unknown>("/users"),
     apiMaybe<unknown>("/departments"),
   ]);
   const templates = extractItems<ReportTemplate>(templatesRaw);

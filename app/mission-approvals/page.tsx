@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import type { Camp, ChainTemplate, Mission } from "@/lib/types";
 
@@ -19,7 +19,7 @@ export default async function MissionApprovalsPage() {
   const [missionsRaw, campsRaw, chainsRaw] = await Promise.all([
     apiMaybe<unknown>("/missions"),
     apiMaybe<unknown>("/camps"),
-    apiMaybe<unknown>("/chains?kind=mission"),
+    apiOptional<unknown>("/chains?kind=mission"),
   ]);
   const missions = extractItems<Mission>(missionsRaw).filter(
     (m) => m.status === "submitted",
@@ -40,7 +40,7 @@ export default async function MissionApprovalsPage() {
     new Set(missions.map((m) => m.chain_template_id).filter(Boolean) as string[]),
   );
   const chainDetails = await Promise.all(
-    chainIds.map((id) => apiMaybe<ChainTemplate>(`/chains/${id}`)),
+    chainIds.map((id) => apiOptional<ChainTemplate>(`/chains/${id}`)),
   );
   const chainMap = new Map<string, ChainTemplate>();
   for (const c of chainDetails) if (c) chainMap.set(c.id, c);

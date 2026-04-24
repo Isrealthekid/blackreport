@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import { actOnReportAction, recallReportAction } from "@/app/actions";
 import BackButton from "@/components/BackButton";
 import FilePreview from "@/components/FilePreview";
@@ -59,17 +60,18 @@ export default async function ReportDetail({
   const report = await apiMaybe<Report>(`/reports/${id}`);
   if (!report) notFound();
 
-  const [template, audit, users, departments, deptMembers] = await Promise.all([
+  const [template, audit, usersRaw, departments, deptMembers] = await Promise.all([
     apiMaybe<ReportTemplate>(`/templates/${report!.template_id}`),
     apiMaybe<AuditEntry[]>(`/reports/${id}/audit`),
-    apiMaybe<User[]>("/users"),
+    apiOptional<unknown>("/users?limit=200"),
     apiMaybe<Department[]>("/departments"),
     report!.department_id
       ? apiMaybe<DepartmentMember[]>(`/departments/${report!.department_id}/members`)
       : Promise.resolve(null),
   ]);
+  const users = extractItems<User>(usersRaw);
   const schema = template?.schema ?? [];
-  const reporter = (users ?? []).find((u) => u.id === report!.reporter_id);
+  const reporter = users.find((u) => u.id === report!.reporter_id);
   const dept = (departments ?? []).find((d) => d.id === report!.department_id);
 
   // Find the final approver (latest "approve" audit entry) when the report

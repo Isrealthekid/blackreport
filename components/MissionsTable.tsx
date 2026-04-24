@@ -220,6 +220,16 @@ export default function MissionsTable({
             };
           }
 
+          const approvedBy = m.approved_by
+            ? userNameRecord[m.approved_by] ?? m.approved_by.slice(0, 8)
+            : null;
+          const approvedAt = m.approved_at
+            ? fmtDate(m.approved_at)
+            : null;
+          const rejectedBy = m.rejected_by
+            ? userNameRecord[m.rejected_by] ?? m.rejected_by.slice(0, 8)
+            : null;
+
           return (
             <Link
               key={m.id}
@@ -250,6 +260,17 @@ export default function MissionsTable({
                     {camp?.site_name ?? "—"} · {fmtDate(m.mission_date)}
                     {showUserCol && ` · ${userName}`}
                   </div>
+                  {m.status === "approved" && approvedBy && (
+                    <div className="mt-1 text-xs text-green-400">
+                      ✓ Approved by {approvedBy}
+                      {approvedAt ? ` on ${approvedAt}` : ""}
+                    </div>
+                  )}
+                  {m.status === "rejected" && rejectedBy && (
+                    <div className="mt-1 text-xs text-red-400">
+                      ✗ Rejected by {rejectedBy}
+                    </div>
+                  )}
                 </div>
 
                 {/* Middle: SAC progress */}

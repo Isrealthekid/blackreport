@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser, getOrganisation } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import type { AuditEntry, Camp, Mission, User } from "@/lib/types";
 import PrintButton from "./PrintButton";
 import MissionMap from "@/components/MissionMap";
@@ -34,14 +35,15 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
   ]);
   if (!mission) notFound();
 
-  const [camp, sac16, sac17, sac18, users, audit] = await Promise.all([
+  const [camp, sac16, sac17, sac18, usersRaw, audit] = await Promise.all([
     apiMaybe<Camp>(`/camps/${mission.camp_id}`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac16`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac17`),
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac18`),
-    apiMaybe<User[]>("/users"),
+    apiOptional<unknown>("/users?limit=200"),
     apiMaybe<AuditEntry[]>(`/missions/${id}/approvals`),
   ]);
+  const users: User[] = extractItems<User>(usersRaw);
 
   const approvalEntry =
     mission.status === "approved"
@@ -62,7 +64,7 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
   // If the mission's reporter_id still isn't in the map (e.g. /users is
   // restricted for this role), fetch the user by id directly.
   if (mission.reporter_id && !userMap.has(mission.reporter_id)) {
-    const u = await apiMaybe<User>(`/users/${mission.reporter_id}`);
+    const u = await apiOptional<User>(`/users/${mission.reporter_id}`);
     if (u) userMap.set(u.id, u.full_name);
   }
 
@@ -76,7 +78,7 @@ export default async function MissionPrint({ params }: { params: Promise<{ id: s
   if (!approverName && approverId) {
     approverName = userMap.get(approverId) ?? null;
     if (!approverName) {
-      const approver = await apiMaybe<User>(`/users/${approverId}`);
+      const approver = await apiOptional<User>(`/users/${approverId}`);
       if (approver) {
         userMap.set(approver.id, approver.full_name);
         approverName = approver.full_name;

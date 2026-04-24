@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import {
   createUserAction,
   deactivateUserAction,
@@ -38,14 +39,14 @@ const CAMP_ROLES: { v: string; l: string }[] = [
 
 export default async function UsersPage() {
   await requireAdmin();
-  const [users, departments, camps] = await Promise.all([
-    apiMaybe<User[]>("/users"),
+  const [usersRaw, departments, campsRaw] = await Promise.all([
+    apiMaybe<unknown>("/users?limit=200"),
     apiMaybe<Department[]>("/departments"),
-    apiMaybe<Camp[]>("/camps"),
+    apiMaybe<unknown>("/camps?limit=200"),
   ]);
-  const userList = users ?? [];
+  const userList = extractItems<User>(usersRaw);
   const activeDepts = (departments ?? []).filter((d) => !d.is_archived);
-  const campList = camps ?? [];
+  const campList = extractItems<Camp>(campsRaw);
 
   // Build per-user department and camp membership maps. Department and camp
   // list endpoints don't include members, so fetch each one individually.
