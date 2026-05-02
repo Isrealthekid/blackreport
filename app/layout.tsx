@@ -53,7 +53,7 @@ export default async function RootLayout({
 
   const unread = extractItems<Notification>(notifsRaw).filter((n) => !n.read).length;
   const orgName = org?.name ?? "Black Report";
-  const orgLogo = "◼";
+  const orgLogo = "LOGO";
 
   // Detect camp membership — single call, resilient.
   let inCamp = false;

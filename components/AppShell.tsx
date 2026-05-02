@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
 import type { Theme } from "@/app/theme-action";
 import ThemeToggle from "./ThemeToggle";
+import logo from "@/components/rtb.png";
 
 export interface NavLink {
   href: string;
@@ -62,9 +64,12 @@ export default function AppShell({
   const sidebarContent = (
     <>
       <div className="h-14 flex items-center gap-2 px-3 border-b border-neutral-800 shrink-0">
-        <div className="w-8 h-8 rounded bg-white text-black flex items-center justify-center font-bold shrink-0">
-          {orgLogo}
-        </div>
+        <Image
+          src={logo}
+          alt="Logo"
+          style={{ maxHeight: "50px", width: "auto", padding: "4px" }}
+          className="shrink-0"
+        />
         {(!collapsed || open) && (
           <div className="font-semibold truncate">{orgName}</div>
         )}
