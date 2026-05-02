@@ -48,7 +48,26 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   return JSON.parse(txt) as T;
 }
 
+/**
+ * apiMaybe — wraps `api()` and returns `null` ONLY when the resource is
+ * genuinely missing (404). Auth, permission, and server failures are
+ * re-thrown so callers can render a real error state instead of silently
+ * showing "no results". Use `apiOptional` if you really do want to swallow
+ * everything.
+ */
 export async function apiMaybe<T>(path: string, init?: ApiInit): Promise<T | null> {
+  try {
+    return await api<T>(path, init);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+/** Truly best-effort fetch — returns null on any error. Use sparingly. */
+export async function apiOptional<T>(path: string, init?: ApiInit): Promise<T | null> {
   try {
     return await api<T>(path, init);
   } catch {

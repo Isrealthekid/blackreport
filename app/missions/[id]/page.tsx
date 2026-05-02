@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import {
   actOnMissionAction,
@@ -78,21 +78,21 @@ export default async function MissionDetail({
     apiMaybe<Record<string, unknown>>(`/missions/${id}/sac18`),
     apiMaybe<unknown>(`/missions/${id}/approvals`),
     mission.chain_template_id
-      ? apiMaybe<ChainTemplate>(`/chains/${mission.chain_template_id}`)
+      ? apiOptional<ChainTemplate>(`/chains/${mission.chain_template_id}`)
       : Promise.resolve(null),
   ]);
   const approvals = extractItems<MissionApprovalEntry>(approvalsRaw);
 
   let approverName: string | null = mission.approved_by_name ?? null;
   if (!approverName && mission.approved_by) {
-    const approver = await apiMaybe<User>(`/users/${mission.approved_by}`);
+    const approver = await apiOptional<User>(`/users/${mission.approved_by}`);
     approverName = approver?.full_name ?? null;
   }
   const approvedAtLabel = mission.approved_at ? fmtDateTime(mission.approved_at) : null;
 
   let rejecterName: string | null = null;
   if (mission.rejected_by) {
-    const rejecter = await apiMaybe<User>(`/users/${mission.rejected_by}`);
+    const rejecter = await apiOptional<User>(`/users/${mission.rejected_by}`);
     rejecterName = rejecter?.full_name ?? null;
   }
   const rejectedAtLabel = mission.rejected_at ? fmtDateTime(mission.rejected_at) : null;

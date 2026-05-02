@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import BackButton from "@/components/BackButton";
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import {
   addDeptMemberAction,
   deleteDepartmentAction,
@@ -33,13 +34,14 @@ export default async function DepartmentEdit({
   await requireAdmin();
   const { id } = await params;
 
-  const [dept, departments, members, users] = await Promise.all([
+  const [dept, departments, members, usersRaw] = await Promise.all([
     apiMaybe<Department>(`/departments/${id}`),
     apiMaybe<Department[]>("/departments"),
     apiMaybe<DepartmentMember[]>(`/departments/${id}/members`),
-    apiMaybe<User[]>("/users"),
+    apiMaybe<unknown>("/users?limit=200"),
   ]);
   if (!dept) notFound();
+  const users = extractItems<User>(usersRaw);
 
   const otherDepts = (departments ?? []).filter((d) => d.id !== dept!.id);
 

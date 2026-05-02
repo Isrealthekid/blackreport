@@ -213,6 +213,12 @@ function Page({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold">{title}</h1>
         <div className="flex items-center gap-2">
+          <a
+            href="/api/reports-export?status=approved"
+            className="px-3 py-1.5 border border-neutral-700 hover:bg-neutral-800 rounded text-sm"
+          >
+            Export CSV
+          </a>
           <Link
             href="/reports/print-batch?status=approved"
             className="px-3 py-1.5 border border-neutral-700 hover:bg-neutral-800 rounded text-sm"

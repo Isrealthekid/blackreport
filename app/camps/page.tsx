@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import { createCampAction } from "@/app/actions";
 import type { Camp, Client } from "@/lib/types";
 
 export default async function CampsPage() {
   const user = await requireUser();
-  const [camps, clients] = await Promise.all([
-    apiMaybe<Camp[]>("/camps"),
-    apiMaybe<Client[]>("/clients"),
+  const [campsRaw, clientsRaw] = await Promise.all([
+    apiMaybe<unknown>("/camps?limit=200"),
+    apiMaybe<unknown>("/clients?limit=200"),
   ]);
-  const list = camps ?? [];
-  const clientList = clients ?? [];
+  const list = extractItems<Camp>(campsRaw);
+  const clientList = extractItems<Client>(clientsRaw);
 
   return (
     <div>

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser, getOrganisation } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import type {
   AuditEntry,
   Department,
@@ -41,13 +42,14 @@ export default async function PrintablePage({
   ]);
   if (!report) notFound();
 
-  const [template, audit, users, departments] = await Promise.all([
+  const [template, audit, usersRaw, departments] = await Promise.all([
     apiMaybe<ReportTemplate>(`/templates/${report!.template_id}`),
     apiMaybe<AuditEntry[]>(`/reports/${id}/audit`),
-    apiMaybe<User[]>("/users"),
+    apiOptional<unknown>("/users?limit=200"),
     apiMaybe<Department[]>("/departments"),
   ]);
-  const reporter = (users ?? []).find((u) => u.id === report!.reporter_id);
+  const users = extractItems<User>(usersRaw);
+  const reporter = users.find((u) => u.id === report!.reporter_id);
   const dept = (departments ?? []).find((d) => d.id === report!.department_id);
 
   const approvalEntry =

@@ -1,11 +1,12 @@
 import { requireAdmin } from "@/lib/auth";
 import { apiMaybe } from "@/lib/api";
+import { extractItems } from "@/lib/api-helpers";
 import { createClientAction, deleteClientAction } from "@/app/actions";
 import type { Client } from "@/lib/types";
 
 export default async function ClientsPage() {
   await requireAdmin();
-  const clients = (await apiMaybe<Client[]>("/clients")) ?? [];
+  const clients = extractItems<Client>(await apiMaybe<unknown>("/clients?limit=200"));
 
   return (
     <div>

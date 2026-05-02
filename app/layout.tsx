@@ -127,6 +127,7 @@ export default async function RootLayout({
     links.push({ href: "/departments", label: "Departments", icon: "⌂", section: "Configure" });
     // links.push({ href: "/chains", label: "Chain Templates", icon: "↳", section: "Configure" });
     links.push({ href: "/users", label: "Users", icon: "◎", section: "Admin" });
+    links.push({ href: "/audit",  label: "Audit log", icon: "≡", section: "Admin" });
     links.push({ href: "/organisation", label: "Organisation", icon: "⌘", section: "Admin" });
   }
 

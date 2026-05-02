@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { apiMaybe } from "@/lib/api";
+import { apiMaybe, apiOptional } from "@/lib/api";
 import { extractItems } from "@/lib/api-helpers";
 import { bulkApproveAction } from "@/app/actions";
 import type { Department, Report, ReportTemplate, User } from "@/lib/types";
@@ -19,7 +19,7 @@ export default async function ApprovalsPage({
   const [queueRaw, templatesRaw, usersRaw, departmentsRaw] = await Promise.all([
     apiMaybe<unknown>("/approvals/queue"),
     apiMaybe<unknown>("/templates"),
-    apiMaybe<unknown>("/users"),
+    apiOptional<unknown>("/users"),
     apiMaybe<unknown>("/departments"),
   ]);
 
