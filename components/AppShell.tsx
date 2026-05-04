@@ -7,7 +7,8 @@ import { useState, useEffect, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
 import type { Theme } from "@/app/theme-action";
 import ThemeToggle from "./ThemeToggle";
-import logo from "@/components/rtb.png";
+import logoDark from "@/components/rtb.png";
+import logoLight from "@/components/EIB Stratoc.png";
 
 export interface NavLink {
   href: string;
@@ -65,7 +66,7 @@ export default function AppShell({
     <>
       <div className="h-14 flex items-center gap-2 px-3 border-b border-neutral-800 shrink-0">
         <Image
-          src={logo}
+          src={theme === "light" ? logoLight : logoDark}
           alt="Logo"
           style={{ maxHeight: "50px", width: "auto", padding: "4px" }}
           className="shrink-0"
